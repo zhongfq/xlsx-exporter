@@ -1,0 +1,568 @@
+import * as xlsx from "xlsx";
+
+export const RANGE_CHECKER = "xlsx.checker.range";
+export const INDEX_CHECKER = "xlsx.checker.index";
+export const EXPR_CHECKER = "xlsx.checker.expr";
+
+export const enum TagType {
+    Row = "xlsx.type.row",
+    Cell = "xlsx.type.cell",
+    Object = "xlsx.type.object",
+    Sheet = "xlsx.type.sheet",
+}
+
+export type Tag = {
+    /** data name */
+    ["!name"]?: string;
+    /** type tag */
+    ["!type"]?: string | TagType;
+    /** special toString function */
+    ["!toString"]?: (v: TValue, indent: number) => string;
+    /** if exists, use this value instead of the object */
+    ["!value"]?: TValue;
+    /** enum name */
+    ["!enum"]?: string;
+    /** comment */
+    ["!comment"]?: string;
+};
+
+export type TCell = {
+    /** converted value */
+    v: unknown;
+    /** location: A1 */
+    r: string;
+    /** original string value */
+    s: string;
+} & Tag;
+
+export type TValue = boolean | number | string | null | undefined | TObject | TArray | TCell;
+export type TObject = { [k: string | number]: TValue } & Tag;
+export type TArray = TValue[] & Tag;
+export type TRow = { [k: string]: TCell } & Tag;
+
+export type Field = {
+    sheet: string;
+    path: string;
+    index: number;
+    name: string;
+    typename: string;
+    writers: string[];
+    checker: CheckerType[];
+    comment: string;
+};
+
+export type Sheet = {
+    name: string;
+    processors: { name: string; args: string[] }[];
+    fields: Field[];
+    data: { [idx: string | number]: TRow };
+};
+
+export type Workbook = {
+    path: string;
+    sheets: Record<string, Sheet>;
+};
+
+export type TypeConvertor = (str: string) => unknown | null;
+type RealType = "int" | "float" | "string" | "bool" | null;
+type Type = { realtype?: RealType; convertor: TypeConvertor };
+
+export type Checker = (cell: TCell, row: TRow, field: Field, errors: string[]) => boolean;
+export type CheckerParser = (...args: string[]) => Checker;
+type CheckerType = Checker & { force: boolean; def: string };
+
+export type Processor = (workbook: Workbook, sheet: Sheet, ...args: string[]) => void;
+type ProcessorType = Processor & { priority: number };
+export type Writer = (path: string, data: TObject, processor: string) => void;
+
+const MAX_ERRORS = 20;
+const MAX_HEADERS = 6;
+export const files: Record<string, Workbook> = {};
+export const checkerParsers: Record<string, CheckerParser> = {};
+export const convertors: Record<string, Type> = {};
+export const processors: Record<string, ProcessorType> = {};
+export const writers: Record<string, Writer> = {};
+const columnCaches: Record<string, TCell[]> = {};
+let doingMsg: string = "";
+
+const doing = (msg: string) => {
+    doingMsg = msg;
+};
+
+export function error(msg: string): never {
+    if (doingMsg) {
+        console.log(doingMsg);
+    }
+    throw new Error(msg);
+}
+
+export function assert(condition: boolean, msg: string): asserts condition {
+    if (!condition) {
+        error(msg);
+    }
+}
+
+export function registerType(typename: string, convertor: TypeConvertor): void;
+export function registerType(typename: string, realtype: RealType, convertor: TypeConvertor): void;
+export function registerType(
+    typename: string,
+    realtypeOrConvertor: RealType | TypeConvertor,
+    convertor?: TypeConvertor
+): void {
+    let realtype: RealType | null = null;
+    if (!convertor) {
+        convertor = realtypeOrConvertor as TypeConvertor;
+        realtype = null;
+    } else {
+        realtype = realtypeOrConvertor as RealType;
+    }
+    assert(typeof convertor === "function", `Convertor must be a function: '${typename}'`);
+    assert(!convertors[typename], `Type '${typename}' already registered`);
+    convertors[typename] = { realtype, convertor };
+}
+
+export const registerChecker = (name: string, parser: CheckerParser) => {
+    assert(!checkerParsers[name], `Checker parser '${name}' already registered`);
+    checkerParsers[name] = parser;
+};
+
+export const registerProcessor = (name: string, processor: Processor, priority: number = 0) => {
+    assert(!processors[name], `Processor '${name}' already registered`);
+    (processor as ProcessorType).priority = priority;
+    processors[name] = processor as ProcessorType;
+};
+
+export const registerWriter = (name: string, writer: Writer) => {
+    assert(!writers[name], `Writer '${name}' already registered`);
+    writers[name] = writer;
+};
+
+export const isNullOrUndefined = (value: TValue) => {
+    if (value === null || value === undefined) {
+        return true;
+    }
+    if (typeof value === "object" && value["!type"] === TagType.Cell) {
+        const cell = value as unknown as TCell;
+        if (cell.v === null || cell.v === undefined) {
+            return true;
+        }
+    }
+    return false;
+};
+
+/**
+ * Convert a cell to a string.
+ * @param cell - The cell to convert.
+ * @returns The string value of the cell, or empty string if the cell.v is null or undefined.
+ */
+export const toString = (cell?: TCell) => {
+    if (!cell || isNullOrUndefined(cell)) {
+        return "";
+    }
+    if (typeof cell.v === "string") {
+        return cell.v.trim();
+    }
+    return String(cell.v);
+};
+
+export const toRef = (col: number, row: number) => {
+    const COLUMN = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let ret = "";
+    while (true) {
+        const c = col % 26;
+        ret = COLUMN[c] + ret;
+        col = (col - c) / 26 - 1;
+        if (col < 0) {
+            break;
+        }
+    }
+    return `${ret}${row + 1}`;
+};
+
+export function convertValue(cell: TCell, typename: string): TCell;
+export function convertValue(value: string, typename: string): TValue;
+export function convertValue(cell: TCell | string, typename: string) {
+    const type = convertors[typename.replace("?", "")];
+    if (!type) {
+        throw new Error(`Convertor not found: '${typename}'`);
+    }
+    if (typeof cell === "string") {
+        const v = type.convertor(cell);
+        if (v === null || v === undefined || v === "") {
+            error(`Convert value error: '${cell}' => type '${typename}'`);
+        }
+        return v as TValue;
+    } else {
+        if (typename.endsWith("?") && cell.v === "") {
+            cell.s = "null";
+            cell.v = null;
+        } else {
+            const v = cell.v;
+            cell.s = toString(cell);
+            cell.v = type.convertor(cell.s);
+            if (cell.v === null || cell.v === undefined || cell.v === "") {
+                error(`Convert value error at ${cell.r}: '${v}' => type '${typename}'`);
+            }
+        }
+        return cell;
+    }
+}
+
+const parseProcessor = (str: string) => {
+    return str
+        .split(/[;\n\r]+/)
+        .filter((s) => s.trim())
+        .map((s) => {
+            /**
+             * @Processor
+             * @Processor(arg1, arg2, ...)
+             */
+            const match = s.match(/@(\w+)(?:\((.*?)\))?/);
+            const [, name = "", args = ""] = match ?? [];
+            if (!processors[name]) {
+                error(`Processor not found: '${name}'`);
+            }
+            return {
+                name,
+                args: args ? args.split(",").map((a) => a.trim()) : [],
+            };
+        })
+        .filter((p) => p.name);
+};
+
+const parseChecker = (str: string) => {
+    if (str === "x") {
+        return [];
+    }
+    return str
+        .split(/[;\n\r]+/)
+        .filter((s) => !!s.trim())
+        .map((s) => {
+            const force = s.startsWith("!");
+            if (force) {
+                s = s.slice(1);
+            }
+            let checker: CheckerType | undefined;
+            if (s.startsWith("@")) {
+                /**
+                 * @Checker
+                 * @Checker(arg1, arg2, ...)
+                 */
+                const [, name = "", arg = ""] = s.match(/@(\w+)(?:\((.*?)\))?/) ?? [];
+                const parser = checkerParsers[name];
+                if (!parser) {
+                    error(`Checker parser not found: '${name}'`);
+                }
+                checker = parser(...arg.split(",").map((a) => a.trim())) as CheckerType;
+            } else if (s.startsWith("[") && s.endsWith("]")) {
+                /**
+                 * [0, 1, "a", "b", "c", ...]
+                 */
+                const parser = checkerParsers[RANGE_CHECKER];
+                checker = parser(s) as CheckerType;
+            } else if (s.includes("#")) {
+                /**
+                 * id=task#main.id
+                 * task#main.id
+                 * #main.id
+                 */
+                const [, idx = "", file = "", sheet = "", key = ""] =
+                    s.match(/^(?:\[?(\w+)\]?=)?([^=]*)#([^.]+)\.(\w+)$/) ?? [];
+                if (!sheet || !key) {
+                    error(`Invalid index checker: '${s}'`);
+                }
+                const parser = checkerParsers[INDEX_CHECKER];
+                checker = parser(file, sheet, key, idx) as CheckerType;
+            } else if (s !== "x") {
+                /**
+                 * value >= 0 && value <= 100
+                 */
+                const parser = checkerParsers[EXPR_CHECKER];
+                checker = parser(s) as CheckerType;
+            }
+            if (checker) {
+                checker.force = force;
+                checker.def = s;
+                return checker;
+            } else {
+                return null;
+            }
+        })
+        .filter((v) => !!v);
+};
+
+const readHeader = (path: string, data: xlsx.WorkBook) => {
+    const workbook: Workbook = {
+        path: path,
+        sheets: {},
+    };
+    files[path] = workbook;
+    const writerKeys = Object.keys(writers);
+    for (const sheetName of data.SheetNames) {
+        if (sheetName.startsWith("#")) {
+            continue;
+        }
+        doing(`Reading sheet '${sheetName}' in '${path}'`);
+        const sheetData = data.Sheets[sheetName];
+        const sheet: Sheet = {
+            name: sheetName,
+            processors: [],
+            fields: [],
+            data: {},
+        };
+        workbook.sheets[sheetName] = sheet;
+        const str = toString(sheetData[0][0]);
+        let start = 0;
+        if (str.startsWith("@")) {
+            sheet.processors.push(...parseProcessor(str));
+            start = 1;
+        }
+        const parsed: Record<string, string> = {};
+        for (let c = 0; c < sheetData[start].length; c++) {
+            const r = start;
+            const name = toString(sheetData[r + 0][c]);
+            const typename = toString(sheetData[r + 1][c]);
+            const writer = toString(sheetData[r + 2][c]);
+            const checker = toString(sheetData[r + 3][c]);
+            const comment = toString(sheetData[r + 4][c]);
+
+            if (name && typename && writer !== "x") {
+                const arr = writer
+                    .split("|")
+                    .map((w) => w.trim())
+                    .filter((w) => w);
+                for (const w of arr) {
+                    if (!writerKeys.includes(w) && c > 0) {
+                        error(`Writer not found: '${w}' at ${toRef(c, r + 2)}`);
+                    }
+                }
+                assert(
+                    !!convertors[typename.replace("?", "")],
+                    `Type not found at ${toRef(c, r + 1)}: '${typename}'`
+                );
+                if (parsed[name]) {
+                    error(`Duplicate field name: '${name}' at ${toRef(c, r)}`);
+                }
+                parsed[name] = toRef(c, r);
+                sheet.fields.push({
+                    path,
+                    sheet: sheetName,
+                    index: c,
+                    name,
+                    typename,
+                    writers: c > 0 && arr.length ? arr : writerKeys.slice(),
+                    checker: parseChecker(c === 0 ? "x" : checker),
+                    comment,
+                });
+            }
+        }
+    }
+};
+
+const readBody = (path: string, data: xlsx.WorkBook) => {
+    const workbook = files[path];
+    for (const sheetName of data.SheetNames) {
+        if (sheetName.startsWith("#")) {
+            continue;
+        }
+        doing(`Reading sheet '${sheetName}' in '${path}'`);
+        const sheetData = data.Sheets[sheetName];
+        const sheet = workbook.sheets[sheetName];
+        const start = toString(sheetData[0][0]).startsWith("@") ? MAX_HEADERS : MAX_HEADERS - 1;
+        for (let r = start; r < sheetData.length; r++) {
+            const row: TRow = {};
+            row["!type"] = TagType.Row;
+            for (const field of sheet.fields) {
+                const cell: TCell = sheetData[r][field.index] ?? {};
+                cell.r = toRef(field.index, r);
+                cell.v = cell.v ?? "";
+                cell["!type"] = TagType.Cell;
+                if (field.index === 0 && cell.v === "") {
+                    break;
+                }
+                if (field.typename === "auto") {
+                    cell.v = r - start;
+                }
+                row[field.name] = cell;
+                if (field.index === 0) {
+                    sheet.data[cell.v as string] = row;
+                }
+            }
+        }
+    }
+};
+
+const parseBody = () => {
+    for (const file in files) {
+        const workbook = files[file];
+        for (const sheetName in workbook.sheets) {
+            doing(`Parsing sheet '${sheetName}' in '${file}'`);
+            const sheet = workbook.sheets[sheetName];
+            for (const field of sheet.fields) {
+                for (const row of Object.values(sheet.data)) {
+                    const cell = row[field.name];
+                    convertValue(cell, field.typename);
+                }
+            }
+        }
+    }
+};
+const invokeChecker = (sheet: Sheet, field: Field, errors: string[]) => {
+    for (const checker of field.checker) {
+        const errorValues: string[] = [];
+        const errorDescs: string[] = [];
+        for (const row of Object.values(sheet.data)) {
+            const cell = row[field.name];
+            if ((cell.v !== null || checker.force) && !checker(cell, row, field, errorDescs)) {
+                errorValues.push(`${cell.r}: ${cell.s}`);
+            }
+        }
+        if (errorValues.length > 0) {
+            if (errorValues.length > MAX_ERRORS) {
+                errorValues.length = MAX_ERRORS;
+                errorValues.push("...");
+            }
+            if (errorDescs.length > MAX_ERRORS) {
+                errorDescs.length = MAX_ERRORS;
+                errorDescs.push("...");
+            }
+            errors.push(
+                `builtin check:\n` +
+                    `     path: ${field.path}\n` +
+                    `    sheet: ${field.sheet}\n` +
+                    `    field: ${field.name}\n` +
+                    `  checker: ${checker.def}\n` +
+                    `   values:\n` +
+                    `      ${errorValues.join("\n      ")}\n` +
+                    `   errors:\n` +
+                    `      ${errorDescs.join("\n      ")}`
+            );
+        }
+    }
+};
+
+const applyChecker = () => {
+    const errors: string[] = [];
+    for (const file in files) {
+        const workbook = files[file];
+        for (const sheetName in workbook.sheets) {
+            const sheet = workbook.sheets[sheetName];
+            for (const field of sheet.fields) {
+                doing(`Checking field '${field.name}' in '${file}#${sheetName}'`);
+                try {
+                    invokeChecker(sheet, field, errors);
+                } catch (e) {
+                    error(String(e));
+                }
+            }
+        }
+    }
+    if (errors.length > 0) {
+        throw new Error(errors.join("\n"));
+    }
+};
+
+const applyProcessor = () => {
+    type ProcessorEntry = {
+        processor: ProcessorType;
+        sheet: Sheet;
+        args: string[];
+        name: string;
+    };
+    for (const file in files) {
+        const workbook = files[file];
+        const arr: ProcessorEntry[] = [];
+        for (const sheetName in workbook.sheets) {
+            const sheet = workbook.sheets[sheetName];
+            for (const { name, args } of sheet.processors) {
+                arr.push({
+                    processor: processors[name],
+                    sheet: sheet,
+                    args: args,
+                    name: name,
+                });
+            }
+        }
+        arr.sort((a, b) => a.processor.priority - b.processor.priority);
+        for (const { processor, sheet, args, name } of arr) {
+            doing(`Applying processor '${name}' in '${file}#${sheet.name}'`);
+            processor(workbook, sheet, ...args);
+        }
+    }
+};
+
+export const parse = (files: string[], headerOnly: boolean = false) => {
+    for (const file of files) {
+        const data = xlsx.readFile(file, {
+            dense: true,
+            cellHTML: false,
+            cellFormula: false,
+            cellText: false,
+            raw: true,
+            sheetRows: headerOnly ? MAX_HEADERS : undefined,
+        });
+        readHeader(file, data);
+        if (!headerOnly) {
+            readBody(file, data);
+        }
+    }
+    if (!headerOnly) {
+        parseBody();
+        applyChecker();
+        applyProcessor();
+    }
+};
+
+export const filter = (workbook: Workbook, writer: string, headerOnly: boolean = false) => {
+    const result: Workbook = { ...workbook, sheets: {} };
+    for (const sheetName in workbook.sheets) {
+        const sheet = workbook.sheets[sheetName];
+        const resultSheet: Sheet = { ...sheet, data: {} };
+        result.sheets[sheetName] = resultSheet;
+        if (!headerOnly) {
+            for (const k in sheet.data) {
+                const row = { ...sheet.data[k] };
+                resultSheet.data[k] = row;
+                for (const field of sheet.fields) {
+                    if (!field.writers.includes(writer)) {
+                        delete row[field.name];
+                    }
+                }
+            }
+        }
+        resultSheet.fields = sheet.fields.filter((f) => f.writers.includes(writer));
+    }
+    return result;
+};
+
+/**
+ * Get a workbook by path.
+ * @param path - The path of the workbook.
+ * @returns The workbook.
+ * @throws An error if the workbook is not found.
+ */
+export const get = (path: string) => {
+    for (const file in files) {
+        if (file.endsWith(path)) {
+            return files[file];
+        }
+    }
+    throw new Error(`File not found: ${path}`);
+};
+
+export const getColumn = (path: string, sheet: string, field: string) => {
+    const key = `${path}#${sheet}#${field}`;
+    if (columnCaches[key]) {
+        return columnCaches[key];
+    }
+    const workbook = get(path);
+    const sheetData = workbook.sheets[sheet]?.data;
+    if (!sheetData) {
+        throw new Error(`Sheet not found: ${path}#${sheet}`);
+    }
+    const column = Object.values(sheetData)
+        .map((v) => v[field])
+        .filter((v) => !!v);
+    columnCaches[key] = column;
+    return column;
+};
