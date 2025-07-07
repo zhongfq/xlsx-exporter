@@ -184,7 +184,7 @@ export const convertToType = (
     typeKey: string = "key1",
     fieldKey: string = "key2"
 ) => {
-    const types = new Map<string, unknown>();
+    const types: Record<string, unknown> = {};
     const workbook = get(path);
     for (const row of Object.values(workbook.sheets[sheetName].data)) {
         const key1 = row[typeKey];
@@ -192,7 +192,7 @@ export const convertToType = (
         const value = row["value"];
         const type = row["value_type"];
         if (key1.v === typeValue) {
-            types.set(String(key2.v), convertValue(value, type.v as string).v);
+            types[String(key2.v)] = convertValue(value, type.v as string).v;
         }
     }
     return types;

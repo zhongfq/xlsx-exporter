@@ -22,7 +22,7 @@ xlsx.registerWriter("client", (path, data, processor) => {
         );
     } else if (processor === "typedef") {
         const name = xlsx.basename(path);
-        const types = xlsx.generateTsTypedef(path, "client");
+        const types = xlsx.genTsTypedef(path, "client");
         xlsx.writeFile(
             `${OUTPUT_DIR}/client/types/${name}.ts`,
             xlsx.outdent(`
@@ -53,7 +53,7 @@ xlsx.registerWriter("server", (path, data, processor) => {
         );
     } else if (processor === "typedef") {
         const name = xlsx.basename(path);
-        const types = xlsx.generateLuaTypedef(path, "server");
+        const types = xlsx.genLuaTypedef(path, "server");
         xlsx.writeFile(
             `${OUTPUT_DIR}/server/types/${name}.lua`,
             xlsx.outdent(`
@@ -68,5 +68,7 @@ xlsx.registerWriter("server", (path, data, processor) => {
 });
 
 xlsx.parse(["test/res/item.xlsx", "test/res/task.xlsx"]);
+
+xlsx.writeFile("test/output/workbook-typedef.ts", xlsx.genWorkbookTypedef());
 
 console.log(Date.now() - t);

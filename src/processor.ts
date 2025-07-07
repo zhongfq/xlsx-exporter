@@ -3,6 +3,7 @@ import { StringBuffer } from "./stringify";
 import { basename, convertToConfig, convertToKeyValue, toPascalCase } from "./util";
 import {
     convertors,
+    files,
     filter,
     get,
     Processor,
@@ -104,7 +105,7 @@ export const TypedefProcessor: Processor = (workbook: Workbook, sheet: Sheet) =>
 
 type ClassNameMaker = (className: string) => string;
 
-export const generateTsTypedef = (path: string, writer: string, maker?: ClassNameMaker) => {
+export const genTsTypedef = (path: string, writer: string, maker?: ClassNameMaker) => {
     const workbook = get(path);
     const buffer = new StringBuffer(4);
     const name = basename(path);
@@ -176,7 +177,7 @@ export const generateTsTypedef = (path: string, writer: string, maker?: ClassNam
     return buffer.toString();
 };
 
-export const generateLuaTypedef = (path: string, writer: string, maker?: ClassNameMaker) => {
+export const genLuaTypedef = (path: string, writer: string, maker?: ClassNameMaker) => {
     if (!maker) {
         maker = (className) => `xlsx.${writer}.${className}`;
     }
@@ -210,6 +211,50 @@ export const generateLuaTypedef = (path: string, writer: string, maker?: ClassNa
             }
         }
         buffer.writeLine("");
+    }
+    return buffer.toString();
+};
+
+export const genWorkbookTypedef = () => {
+    const buffer = new StringBuffer(4);
+    buffer.writeLine(`// AUTO GENERATED, DO NOT MODIFY!\n`);
+    for (const path of Object.keys(files).sort()) {
+        const workbook = get(path);
+        const name = basename(path);
+        for (const k of Object.keys(workbook.sheets).sort()) {
+            const sheet = workbook.sheets[k];
+            const className = toPascalCase(`${name}_${sheet.name}`);
+
+            // row
+            buffer.writeLine(`// file: ${path}`);
+            buffer.writeLine(`export interface ${className} {`);
+            buffer.indent();
+            for (const field of sheet.fields) {
+                const checker = field.checker.map((v) => v.def).join(";");
+                const optional = field.typename.endsWith("?") ? "?" : "";
+                const comment = field.comment.replaceAll("\n", "\\n");
+                let typename = field.typename.replaceAll("?", "");
+                typename = convertors[typename].realtype ?? typename;
+                buffer.writeLine(`/**`);
+                buffer.writeLine(
+                    ` * ${comment} (checker: ${checker || "x"}) ` +
+                        `(writer: ${field.writers.join("|")})`
+                );
+                buffer.writeLine(` */`);
+                if (typename === "int" || typename === "float") {
+                    buffer.writeLine(`readonly ${field.name}: { v${optional}:number };`);
+                } else if (typename === "string") {
+                    buffer.writeLine(`readonly ${field.name}: { v${optional}:string };`);
+                } else if (typename === "bool") {
+                    buffer.writeLine(`readonly ${field.name}: { v${optional}:boolean };`);
+                } else {
+                    buffer.writeLine(`readonly ${field.name}: { v${optional}:unknown };`);
+                }
+            }
+            buffer.unindent();
+            buffer.writeLine(`}`);
+            buffer.writeLine("");
+        }
     }
     return buffer.toString();
 };

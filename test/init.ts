@@ -1,18 +1,18 @@
 import * as xlsx from "..";
 
 {
-    let qualityTypes: Map<string, unknown> | undefined;
+    let qualityTypes: Record<string, unknown> | undefined;
     xlsx.registerType("quality", "int", (value) => {
         qualityTypes ??= xlsx.convertToType("item.xlsx", "config", "QUALITY");
-        return qualityTypes.get(value);
+        return qualityTypes[value];
     });
 }
 
 {
-    let taskTypes: Map<string, unknown> | undefined;
+    let taskTypes: Record<string, unknown> | undefined;
     xlsx.registerType("task_type", "int", (value) => {
         taskTypes ??= xlsx.convertToType("task.xlsx", "config", "TASK_TYPE");
-        return taskTypes.get(value);
+        return taskTypes[value];
     });
 }
 
@@ -32,18 +32,18 @@ import * as xlsx from "..";
 }
 
 {
-    let itemTypes: Map<string, unknown> | undefined;
+    let itemTypes: Record<string, unknown> | undefined;
     xlsx.registerType("item_type", "int", (value) => {
         itemTypes ??= xlsx.convertToType("item.xlsx", "config", "ITEM_TYPE");
-        return itemTypes.get(value);
+        return itemTypes[value];
     });
 }
 
 {
-    let bagTypes: Map<string, unknown> | undefined;
+    let bagTypes: Record<string, unknown> | undefined;
     xlsx.registerType("bag_type", "int", (value) => {
         bagTypes ??= xlsx.convertToType("item.xlsx", "config", "BAG_TYPE");
-        return bagTypes.get(value);
+        return bagTypes[value];
     });
 }
 
