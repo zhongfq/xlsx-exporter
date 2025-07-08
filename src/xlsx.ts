@@ -1,4 +1,4 @@
-import * as xlsx from "xlsx";
+import xlsx from "xlsx";
 
 export const RANGE_CHECKER = "xlsx.checker.range";
 export const INDEX_CHECKER = "xlsx.checker.index";
