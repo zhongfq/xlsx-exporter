@@ -55,6 +55,32 @@ export const outdent = (value: string) => {
     return space ? value.replace(new RegExp(`^${space}`, "gm"), "") : value;
 };
 
+export const format = (str: string, vars: Record<string, string>) => {
+    const lines: string[] = [];
+    for (const line of str.split(/\n|\r\n/)) {
+        if (line.match(/^\s*%{\w+}\s*$/)) {
+            const [_, space, key] = line.match(/^(\s*)%{(\w+)}$/)!;
+            if (vars[key] !== undefined && vars[key] !== null) {
+                for (const l of vars[key].split(/\n|\r\n/)) {
+                    lines.push(space + l);
+                }
+            } else {
+                throw new Error(`variable '${key}' not found`);
+            }
+        } else {
+            lines.push(
+                line.replaceAll(/%{(\w+)}/g, (_, key) => {
+                    if (vars[key] !== undefined && vars[key] !== null) {
+                        return vars[key];
+                    }
+                    throw new Error(`variable '${key}' not found`);
+                })
+            );
+        }
+    }
+    return lines.join("\n");
+};
+
 /**
  * Sort keys of object, ignore null or undefined value
  */

@@ -291,6 +291,14 @@ const parseChecker = (str: string) => {
         .filter((v) => !!v);
 };
 
+const readCell = (sheetData: xlsx.WorkSheet, r: number, c: number) => {
+    const cell: TCell = sheetData[r]?.[c] ?? {};
+    cell.v = typeof cell.v === "string" ? cell.v.trim() : cell.v ?? "";
+    cell.r = toRef(c, r);
+    cell["!type"] = TagType.Cell;
+    return cell;
+};
+
 const readHeader = (path: string, data: xlsx.WorkBook) => {
     const workbook: Workbook = {
         path: path,
@@ -299,43 +307,52 @@ const readHeader = (path: string, data: xlsx.WorkBook) => {
     files[path] = workbook;
     const writerKeys = Object.keys(writers);
     for (const sheetName of data.SheetNames) {
-        if (sheetName.startsWith("#")) {
-            continue;
-        }
         doing(`Reading sheet '${sheetName}' in '${path}'`);
         const sheetData = data.Sheets[sheetName];
+        if (sheetName.startsWith("#") || !sheetData[0]) {
+            continue;
+        }
+
         const sheet: Sheet = {
             name: sheetName,
             processors: [],
             fields: [],
             data: {},
         };
-        workbook.sheets[sheetName] = sheet;
-        const str = toString(sheetData[0][0]);
+
+        const str = toString(readCell(sheetData, 0, 0));
         let start = 0;
         if (str.startsWith("@")) {
             sheet.processors.push(...parseProcessor(str));
             start = 1;
         }
+
+        if (!sheetData[start]) {
+            continue;
+        }
+
         const parsed: Record<string, string> = {};
         for (let c = 0; c < sheetData[start].length; c++) {
             const r = start;
-            const name = toString(sheetData[r + 0][c]);
-            const typename = toString(sheetData[r + 1][c]);
-            const writer = toString(sheetData[r + 2][c]);
-            const checker = toString(sheetData[r + 3][c]);
-            const comment = toString(sheetData[r + 4][c]);
+            const name = toString(readCell(sheetData, r + 0, c));
+            const typename = toString(readCell(sheetData, r + 1, c));
+            const writer = toString(readCell(sheetData, r + 2, c));
+            const checker = toString(readCell(sheetData, r + 3, c));
+            const comment = toString(readCell(sheetData, r + 4, c));
 
-            if (name && typename && writer !== "x") {
+            if (!name || !typename) {
+                break;
+            } else if (writer !== "x") {
                 const arr = writer
                     .split("|")
                     .map((w) => w.trim())
-                    .filter((w) => w);
-                for (const w of arr) {
-                    if (!writerKeys.includes(w) && c > 0) {
-                        error(`Writer not found: '${w}' at ${toRef(c, r + 2)}`);
-                    }
-                }
+                    .filter((w) => w)
+                    .map((w) => {
+                        if (!writerKeys.includes(w) && c > 0) {
+                            error(`Writer not found: '${w}' at ${toRef(c, r + 2)}`);
+                        }
+                        return w;
+                    });
                 assert(
                     !!convertors[typename.replace("?", "")],
                     `Type not found at ${toRef(c, r + 1)}: '${typename}'`
@@ -356,29 +373,32 @@ const readHeader = (path: string, data: xlsx.WorkBook) => {
                 });
             }
         }
+
+        if (sheet.fields.length > 0) {
+            workbook.sheets[sheetName] = sheet;
+        }
     }
 };
 
 const readBody = (path: string, data: xlsx.WorkBook) => {
     const workbook = files[path];
     for (const sheetName of data.SheetNames) {
-        if (sheetName.startsWith("#")) {
-            continue;
-        }
         doing(`Reading sheet '${sheetName}' in '${path}'`);
         const sheetData = data.Sheets[sheetName];
+        if (!workbook.sheets[sheetName]) {
+            continue;
+        }
         const sheet = workbook.sheets[sheetName];
-        const start = toString(sheetData[0][0]).startsWith("@") ? MAX_HEADERS : MAX_HEADERS - 1;
-        for (let r = start; r < sheetData.length; r++) {
+        const start = toString(readCell(sheetData, 0, 0)).startsWith("@")
+            ? MAX_HEADERS
+            : MAX_HEADERS - 1;
+        loop: for (let r = start; r < sheetData.length; r++) {
             const row: TRow = {};
             row["!type"] = TagType.Row;
             for (const field of sheet.fields) {
-                const cell: TCell = sheetData[r][field.index] ?? {};
-                cell.r = toRef(field.index, r);
-                cell.v = cell.v ?? "";
-                cell["!type"] = TagType.Cell;
+                const cell: TCell = readCell(sheetData, r, field.index);
                 if (field.index === 0 && cell.v === "") {
-                    break;
+                    break loop;
                 }
                 if (field.typename === "auto") {
                     cell.v = r - start;
