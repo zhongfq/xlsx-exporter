@@ -83,6 +83,7 @@ export const convertors: Record<string, Type> = {};
 export const processors: Record<string, ProcessorType> = {};
 export const writers: Record<string, Writer> = {};
 const columnCaches: Record<string, TCell[]> = {};
+const rowCaches: Record<string, TRow[]> = {};
 let doingMsg: string = "";
 
 const doing = (msg: string) => {
@@ -230,7 +231,7 @@ const parseProcessor = (str: string) => {
         .filter((p) => p.name);
 };
 
-const parseChecker = (str: string) => {
+const parseChecker = (path: string, str: string) => {
     if (str === "x") {
         return [];
     }
@@ -272,7 +273,7 @@ const parseChecker = (str: string) => {
                     error(`Invalid index checker: '${s}'`);
                 }
                 const parser = checkerParsers[INDEX_CHECKER];
-                checker = parser(file, sheet, key, idx) as CheckerType;
+                checker = parser(file || path, sheet, key, idx) as CheckerType;
             } else if (s !== "x") {
                 /**
                  * value >= 0 && value <= 100
@@ -368,7 +369,7 @@ const readHeader = (path: string, data: xlsx.WorkBook) => {
                     name,
                     typename,
                     writers: c > 0 && arr.length ? arr : writerKeys.slice(),
-                    checker: parseChecker(c === 0 ? "x" : checker),
+                    checker: parseChecker(path, c === 0 ? "x" : checker),
                     comment,
                 });
             }
@@ -415,6 +416,7 @@ const readBody = (path: string, data: xlsx.WorkBook) => {
 const parseBody = () => {
     for (const file in files) {
         const workbook = files[file];
+        console.log(`parsing: '${file}'`);
         for (const sheetName in workbook.sheets) {
             doing(`Parsing sheet '${sheetName}' in '${file}'`);
             const sheet = workbook.sheets[sheetName];
@@ -513,6 +515,7 @@ const applyProcessor = () => {
 
 export const parse = (files: string[], headerOnly: boolean = false) => {
     for (const file of files) {
+        console.log(`reading: '${file}'`);
         const data = xlsx.readFile(file, {
             dense: true,
             cellHTML: false,
@@ -584,5 +587,54 @@ export const getColumn = (path: string, sheet: string, field: string) => {
         .map((v) => v[field])
         .filter((v) => !!v);
     columnCaches[key] = column;
-    return column;
+    return column as readonly TCell[];
+};
+
+export const getRows = (path: string, sheet: string) => {
+    const key = `${path}#${sheet}`;
+    if (rowCaches[key]) {
+        return rowCaches[key];
+    }
+    const workbook = get(path);
+    const sheetData = workbook.sheets[sheet]?.data;
+    if (!sheetData) {
+        throw new Error(`Sheet not found: ${path}#${sheet}`);
+    }
+    const rows = Object.values(sheetData);
+    rowCaches[key] = rows;
+    return rows as readonly TRow[];
+};
+
+export type ColumnIndexer = (value: unknown) => boolean;
+
+export const createColumnIndexer = (
+    path: string,
+    sheetName: string,
+    field: string
+): ColumnIndexer => {
+    let workbook: Workbook | null = null;
+    const cache: Map<unknown, boolean> = new Map();
+
+    path = path.replace(/\.xlsx$/, "") + ".xlsx";
+
+    return (value: unknown): boolean => {
+        if (cache.has(value)) {
+            return cache.get(value) as boolean;
+        }
+        workbook ??= get(path);
+        for (const sheet of Object.values(workbook.sheets)) {
+            if (sheet.name === sheetName || sheetName === "*") {
+                getColumn(path, sheet.name, field).forEach((cell) => {
+                    if (!isNullOrUndefined(cell)) {
+                        cache.set(cell.v, true);
+                    }
+                });
+                if (cache.has(value)) {
+                    return cache.get(value) as boolean;
+                }
+            }
+        }
+        cache.set(value, false);
+        return false;
+    };
 };

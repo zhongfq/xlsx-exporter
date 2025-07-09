@@ -1,4 +1,4 @@
-import { CheckerParser, error, Field, get, getColumn, Workbook } from "./xlsx";
+import { CheckerParser, createColumnIndexer, error } from "./xlsx";
 
 export const SizeCheckerParser: CheckerParser = (arg) => {
     const length = Number(arg);
@@ -48,31 +48,7 @@ export const RangeCheckerParser: CheckerParser = (arg) => {
 };
 
 export const IndexCheckerParser: CheckerParser = (file, sheetName, key, idx) => {
-    let workbook: Workbook | null = null;
-    const cache: Map<unknown, boolean> = new Map();
-
-    const exists = (field: Field, value: unknown): boolean => {
-        if (cache.has(value)) {
-            return true;
-        }
-        const path = !file ? field.path : file + ".xlsx";
-        if (!workbook) {
-            workbook = get(path);
-        }
-        for (const sheet of Object.values(workbook.sheets)) {
-            if (sheet.name === sheetName || sheetName === "*") {
-                getColumn(path, sheet.name, key).forEach((cell) => {
-                    if (cell.v !== null) {
-                        cache.set(cell.v, true);
-                    }
-                });
-                if (cache.has(value)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    };
+    const exists = createColumnIndexer(file, sheetName, key);
 
     return (cell, row, field, errors) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -81,7 +57,7 @@ export const IndexCheckerParser: CheckerParser = (file, sheetName, key, idx) => 
             error(`Invalid value at ${cell.r} in ${field.path}#${field.sheet}`);
         }
         if (typeof value !== "object") {
-            return exists(field, value);
+            return exists(value);
         } else if (Array.isArray(value)) {
             /**
              * [value, value, ...]
@@ -90,10 +66,10 @@ export const IndexCheckerParser: CheckerParser = (file, sheetName, key, idx) => 
             let found = 0;
             for (const item of value) {
                 if (!idx) {
-                    if (exists(field, item)) {
+                    if (exists(item)) {
                         found++;
                     }
-                } else if (typeof item === "object" && exists(field, item[idx])) {
+                } else if (typeof item === "object" && exists(item[idx])) {
                     found++;
                 }
             }
@@ -102,7 +78,7 @@ export const IndexCheckerParser: CheckerParser = (file, sheetName, key, idx) => 
             /**
              * {idx: value}
              */
-            return typeof value === "object" && exists(field, value[idx]);
+            return typeof value === "object" && exists(value[idx]);
         }
     };
 };
