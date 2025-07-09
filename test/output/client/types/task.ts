@@ -371,7 +371,7 @@ export interface GeneratedTaskMainRow {
      */
     readonly custom?: unknown;
     /**
-     * 完成后自动提交 (checker: x)
+     * 完成后自动提交 (checker: [1])
      */
     readonly auto_submit?: number;
 }
@@ -427,7 +427,7 @@ export interface GeneratedTaskMainCol {
      */
     readonly custom: (unknown | undefined)[];
     /**
-     * 完成后自动提交 (checker: x)
+     * 完成后自动提交 (checker: [1])
      */
     readonly auto_submit: (number | undefined)[];
 }

@@ -283,7 +283,7 @@ export interface TaskMain {
      */
     readonly custom: { v?:unknown };
     /**
-     * 完成后自动提交 (checker: x) (writer: client)
+     * 完成后自动提交 (checker: [1]) (writer: client)
      */
     readonly auto_submit: { v?:number };
 }

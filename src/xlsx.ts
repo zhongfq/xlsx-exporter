@@ -84,15 +84,20 @@ export const processors: Record<string, ProcessorType> = {};
 export const writers: Record<string, Writer> = {};
 const columnCaches: Record<string, TCell[]> = {};
 const rowCaches: Record<string, TRow[]> = {};
-let doingMsg: string = "";
+const doings: string[] = [];
 
-const doing = (msg: string) => {
-    doingMsg = msg;
+export const doing = (msg: string) => {
+    doings.push(msg);
+    return new (class {
+        [Symbol.dispose]() {
+            doings.pop();
+        }
+    })();
 };
 
 export function error(msg: string): never {
-    if (doingMsg) {
-        console.log(doingMsg);
+    if (doings.length > 0) {
+        console.log(" -> " + doings.join("\n -> "));
     }
     throw new Error(msg);
 }
@@ -185,7 +190,7 @@ export function convertValue(value: string, typename: string): TValue;
 export function convertValue(cell: TCell | string, typename: string) {
     const type = convertors[typename.replace("?", "")];
     if (!type) {
-        throw new Error(`Convertor not found: '${typename}'`);
+        error(`Convertor not found: '${typename}'`);
     }
     if (typeof cell === "string") {
         const v = type.convertor(cell);
@@ -231,7 +236,7 @@ const parseProcessor = (str: string) => {
         .filter((p) => p.name);
 };
 
-const parseChecker = (path: string, str: string) => {
+const parseChecker = (path: string, refer: string, str: string) => {
     if (str === "x") {
         return [];
     }
@@ -243,6 +248,7 @@ const parseChecker = (path: string, str: string) => {
             if (force) {
                 s = s.slice(1);
             }
+            using _ = doing(`Parsing checker at ${refer}: '${s}'`);
             let checker: CheckerType | undefined;
             if (s.startsWith("@")) {
                 /**
@@ -252,7 +258,7 @@ const parseChecker = (path: string, str: string) => {
                 const [, name = "", arg = ""] = s.match(/@(\w+)(?:\((.*?)\))?/) ?? [];
                 const parser = checkerParsers[name];
                 if (!parser) {
-                    error(`Checker parser not found: '${name}'`);
+                    error(`Checker parser not found at ${refer}: '${name}'`);
                 }
                 checker = parser(...arg.split(",").map((a) => a.trim())) as CheckerType;
             } else if (s.startsWith("[") && s.endsWith("]")) {
@@ -270,7 +276,7 @@ const parseChecker = (path: string, str: string) => {
                 const [, idx = "", file = "", sheet = "", key = ""] =
                     s.match(/^(?:\[?(\w+)\]?=)?([^=]*)#([^.]+)\.(\w+)$/) ?? [];
                 if (!sheet || !key) {
-                    error(`Invalid index checker: '${s}'`);
+                    error(`Invalid index checker at ${refer}: '${s}'`);
                 }
                 const parser = checkerParsers[INDEX_CHECKER];
                 checker = parser(file || path, sheet, key, idx) as CheckerType;
@@ -294,7 +300,7 @@ const parseChecker = (path: string, str: string) => {
 
 const readCell = (sheetData: xlsx.WorkSheet, r: number, c: number) => {
     const cell: TCell = sheetData[r]?.[c] ?? {};
-    cell.v = typeof cell.v === "string" ? cell.v.trim() : cell.v ?? "";
+    cell.v = typeof cell.v === "string" ? cell.v.trim() : (cell.v ?? "");
     cell.r = toRef(c, r);
     cell["!type"] = TagType.Cell;
     return cell;
@@ -308,7 +314,7 @@ const readHeader = (path: string, data: xlsx.WorkBook) => {
     files[path] = workbook;
     const writerKeys = Object.keys(writers);
     for (const sheetName of data.SheetNames) {
-        doing(`Reading sheet '${sheetName}' in '${path}'`);
+        using _ = doing(`Reading sheet '${sheetName}' in '${path}'`);
         const sheetData = data.Sheets[sheetName];
         if (sheetName.startsWith("#") || !sheetData[0]) {
             continue;
@@ -369,7 +375,7 @@ const readHeader = (path: string, data: xlsx.WorkBook) => {
                     name,
                     typename,
                     writers: c > 0 && arr.length ? arr : writerKeys.slice(),
-                    checker: parseChecker(path, c === 0 ? "x" : checker),
+                    checker: parseChecker(path, parsed[name], c === 0 ? "x" : checker),
                     comment,
                 });
             }
@@ -384,7 +390,7 @@ const readHeader = (path: string, data: xlsx.WorkBook) => {
 const readBody = (path: string, data: xlsx.WorkBook) => {
     const workbook = files[path];
     for (const sheetName of data.SheetNames) {
-        doing(`Reading sheet '${sheetName}' in '${path}'`);
+        using _ = doing(`Reading sheet '${sheetName}' in '${path}'`);
         const sheetData = data.Sheets[sheetName];
         if (!workbook.sheets[sheetName]) {
             continue;
@@ -418,7 +424,7 @@ const parseBody = () => {
         const workbook = files[file];
         console.log(`parsing: '${file}'`);
         for (const sheetName in workbook.sheets) {
-            doing(`Parsing sheet '${sheetName}' in '${file}'`);
+            using _ = doing(`Parsing sheet '${sheetName}' in '${file}'`);
             const sheet = workbook.sheets[sheetName];
             for (const field of sheet.fields) {
                 for (const row of Object.values(sheet.data)) {
@@ -470,7 +476,7 @@ const applyChecker = () => {
         for (const sheetName in workbook.sheets) {
             const sheet = workbook.sheets[sheetName];
             for (const field of sheet.fields) {
-                doing(`Checking field '${field.name}' in '${file}#${sheetName}'`);
+                using _ = doing(`Checking field '${field.name}' in '${file}#${sheetName}'`);
                 try {
                     invokeChecker(sheet, field, errors);
                 } catch (e) {
@@ -507,7 +513,7 @@ const applyProcessor = () => {
         }
         arr.sort((a, b) => a.processor.priority - b.processor.priority);
         for (const { processor, sheet, args, name } of arr) {
-            doing(`Applying processor '${name}' in '${file}#${sheet.name}'`);
+            using _ = doing(`Applying processor '${name}' in '${file}#${sheet.name}'`);
             processor(workbook, sheet, ...args);
         }
     }
