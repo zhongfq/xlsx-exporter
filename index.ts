@@ -53,10 +53,10 @@ registerChecker(EXPR_CHECKER, ExprCheckerParser);
 registerChecker(RANGE_CHECKER, RangeCheckerParser);
 registerChecker(INDEX_CHECKER, IndexCheckerParser);
 
-registerProcessor("keyvalue", KeyValueProcessor);
 registerProcessor("config", ConfigProcessor);
-registerProcessor("stringify", StringifyProcessor, 998);
-registerProcessor("typedef", TypedefProcessor, 999);
+registerProcessor("keyvalue", KeyValueProcessor, 800);
+registerProcessor("stringify", StringifyProcessor, 900, true);
+registerProcessor("typedef", TypedefProcessor, 999, true);
 
 registerStringifyRule("merge", mergeSheet);
 registerStringifyRule("simple", simpleSheet);

@@ -113,14 +113,15 @@ export const toPascalCase = (str: string): string => {
 export const convertToConfig = (sheet: Sheet) => {
     const keys = Object.keys(sheet.data)
         .map((k) => Number(k))
-        .filter((v) => !isNaN(v));
+        .filter((v) => !isNaN(v))
+        .sort((a, b) => a - b);
 
     const config: TObject = {};
     const enumOptions: TObject[] = [];
 
     for (let i = 0; i < keys.length; i++) {
         const idx = keys[i];
-        assert(idx === i, `Key '${idx}' is not found`);
+        assert(idx === i + 1, `Key '${idx}' is not found`);
 
         const row = sheet.data[idx];
         const value = convertValue(row["value"], row["value_type"].v as string);
@@ -174,7 +175,7 @@ export const convertToConfig = (sheet: Sheet) => {
             if (typeof a.value === "number" && typeof b.value === "number") {
                 return a.value - b.value;
             }
-            return a.name.localeCompare(b.name);
+            return String(a.value).localeCompare(String(b.value));
         });
         config[`${enumName}Options`] = options as TArray;
     }
