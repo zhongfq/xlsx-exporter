@@ -3,15 +3,15 @@
 // file: test/res/item.xlsx
 export interface GeneratedItemFollowRow {
     /**
-     * ### (checker: x)
+     * ### (location: A1) (checker: x)
      */
     readonly id: number;
     /**
-     * 物品类型 (checker: x)
+     * 物品类型 (location: B1) (checker: x)
      */
     readonly name?: string;
     /**
-     *  (checker: @follow(name))
+     *  (location: C1) (checker: @follow(name))
      */
     readonly value?: string;
 }
@@ -19,15 +19,15 @@ export interface GeneratedItemFollowRow {
 // file: test/res/item.xlsx
 export interface GeneratedItemFollowCol {
     /**
-     * ### (checker: x)
+     * ### (location: A1) (checker: x)
      */
     readonly id: (number)[];
     /**
-     * 物品类型 (checker: x)
+     * 物品类型 (location: B1) (checker: x)
      */
     readonly name: (string | undefined)[];
     /**
-     *  (checker: @follow(name))
+     *  (location: C1) (checker: @follow(name))
      */
     readonly value: (string | undefined)[];
 }
@@ -35,43 +35,43 @@ export interface GeneratedItemFollowCol {
 // file: test/res/item.xlsx
 export interface GeneratedItemItemRow {
     /**
-     * ### (checker: x)
+     * ### (location: A1) (checker: x)
      */
     readonly id: number;
     /**
-     * 注释 (checker: x)
+     * 注释 (location: B1) (checker: x)
      */
     readonly comment: string;
     /**
-     * 物品名称 (checker: x)
+     * 物品名称 (location: C1) (checker: x)
      */
     readonly name: string;
     /**
-     * 物品说明 (checker: x)
+     * 物品说明 (location: D1) (checker: x)
      */
     readonly desc: string;
     /**
-     * 物品类型\nconfig.ITEM_TYPE (checker: x)
+     * 物品类型 config.ITEM_TYPE (location: E1) (checker: x)
      */
     readonly item_type: number;
     /**
-     * 背包类型\nconfig.BAG_TYPE (checker: x)
+     * 背包类型 config.BAG_TYPE (location: F1) (checker: x)
      */
     readonly bag_id: number;
     /**
-     * 可否堆叠 (checker: x)
+     * 可否堆叠 (location: G1) (checker: x)
      */
     readonly stack?: number;
     /**
-     * 品质(颜色) (checker: x)
+     * 品质(颜色) (location: H1) (checker: x)
      */
     readonly quality: number;
     /**
-     * 参数 (checker: x)
+     * 参数 (location: I1) (checker: x)
      */
     readonly args?: unknown;
     /**
-     * 背包是否隐藏 (checker: x)
+     * 背包是否隐藏 (location: J1) (checker: x)
      */
     readonly hide?: boolean;
 }
@@ -79,43 +79,43 @@ export interface GeneratedItemItemRow {
 // file: test/res/item.xlsx
 export interface GeneratedItemItemCol {
     /**
-     * ### (checker: x)
+     * ### (location: A1) (checker: x)
      */
     readonly id: (number)[];
     /**
-     * 注释 (checker: x)
+     * 注释 (location: B1) (checker: x)
      */
     readonly comment: (string)[];
     /**
-     * 物品名称 (checker: x)
+     * 物品名称 (location: C1) (checker: x)
      */
     readonly name: (string)[];
     /**
-     * 物品说明 (checker: x)
+     * 物品说明 (location: D1) (checker: x)
      */
     readonly desc: (string)[];
     /**
-     * 物品类型\nconfig.ITEM_TYPE (checker: x)
+     * 物品类型\nconfig.ITEM_TYPE (location: E1) (checker: x)
      */
     readonly item_type: (number)[];
     /**
-     * 背包类型\nconfig.BAG_TYPE (checker: x)
+     * 背包类型\nconfig.BAG_TYPE (location: F1) (checker: x)
      */
     readonly bag_id: (number)[];
     /**
-     * 可否堆叠 (checker: x)
+     * 可否堆叠 (location: G1) (checker: x)
      */
     readonly stack: (number | undefined)[];
     /**
-     * 品质(颜色) (checker: x)
+     * 品质(颜色) (location: H1) (checker: x)
      */
     readonly quality: (number)[];
     /**
-     * 参数 (checker: x)
+     * 参数 (location: I1) (checker: x)
      */
     readonly args: (unknown | undefined)[];
     /**
-     * 背包是否隐藏 (checker: x)
+     * 背包是否隐藏 (location: J1) (checker: x)
      */
     readonly hide: (boolean | undefined)[];
 }
@@ -123,23 +123,23 @@ export interface GeneratedItemItemCol {
 // file: test/res/item.xlsx
 export interface GeneratedItemMapRow {
     /**
-     * ### (checker: x)
+     * ### (location: A2) (checker: x)
      */
     readonly id: number;
     /**
-     * 注释 (checker: x)
+     * 注释 (location: B2) (checker: x)
      */
     readonly comment: string;
     /**
-     *  (checker: x)
+     *  (location: C2) (checker: x)
      */
     readonly kind: number;
     /**
-     *  (checker: x)
+     *  (location: D2) (checker: x)
      */
     readonly level: number;
     /**
-     * 物品名称 (checker: x)
+     * 物品名称 (location: E2) (checker: x)
      */
     readonly name: string;
 }
@@ -147,23 +147,23 @@ export interface GeneratedItemMapRow {
 // file: test/res/item.xlsx
 export interface GeneratedItemMapCol {
     /**
-     * ### (checker: x)
+     * ### (location: A2) (checker: x)
      */
     readonly id: (number)[];
     /**
-     * 注释 (checker: x)
+     * 注释 (location: B2) (checker: x)
      */
     readonly comment: (string)[];
     /**
-     *  (checker: x)
+     *  (location: C2) (checker: x)
      */
     readonly kind: (number)[];
     /**
-     *  (checker: x)
+     *  (location: D2) (checker: x)
      */
     readonly level: (number)[];
     /**
-     * 物品名称 (checker: x)
+     * 物品名称 (location: E2) (checker: x)
      */
     readonly name: (string)[];
 }

@@ -55,6 +55,7 @@ export type Field = {
     writers: string[];
     checker: CheckerType[];
     comment: string;
+    refer: string;
 };
 
 export type Sheet = {
@@ -439,6 +440,7 @@ const readHeader = (path: string, data: xlsx.WorkBook) => {
                     writers: c > 0 && arr.length ? arr : writerKeys.slice(),
                     checker: parseChecker(path, parsed[name], c === 0 ? "x" : checker),
                     comment,
+                    refer: toRef(c, r),
                 });
             }
         }
@@ -667,11 +669,9 @@ export const getColumn = (path: string, sheet: string, field: string) => {
     if (!sheetData) {
         throw new Error(`Sheet not found: ${path}#${sheet}`);
     }
-    const column = Object.values(sheetData)
-        .map((v) => v[field])
-        .filter((v) => !!v);
+    const column = Object.values(sheetData).map((v) => v[field] ?? null);
     columnCaches[key] = column;
-    return column as readonly TCell[];
+    return column as readonly (TCell | null)[];
 };
 
 export const getRows = (path: string, sheet: string) => {
@@ -687,6 +687,15 @@ export const getRows = (path: string, sheet: string) => {
     const rows = Object.values(sheetData);
     rowCaches[key] = rows;
     return rows as readonly TRow[];
+};
+
+export const getSheet = (path: string, sheetName: string) => {
+    const workbook = get(path);
+    const sheet = workbook.sheets[sheetName];
+    if (!sheet) {
+        throw new Error(`Sheet not found: ${path}#${sheetName}`);
+    }
+    return sheet;
 };
 
 export type ColumnIndexer<T> = {
@@ -711,9 +720,11 @@ export const createColumnIndexer = <T = TRow>(
         workbook ??= get(path);
         for (const sheet of Object.values(workbook.sheets)) {
             if (sheet.name === sheetName || sheetName === "*") {
-                getColumn(path, sheet.name, field).forEach((cell) =>
-                    cache.set(cell.v, isNullOrUndefined(cell) ? null : cell)
-                );
+                getColumn(path, sheet.name, field).forEach((cell) => {
+                    if (cell) {
+                        cache.set(cell.v, isNullOrUndefined(cell) ? null : cell);
+                    }
+                });
                 if (cache.has(value)) {
                     return !!cache.get(value);
                 }

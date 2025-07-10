@@ -166,11 +166,13 @@ export const genTsTypedef = (path: string, writer: string, maker?: ClassNameMake
             }
             const checker = field.checker.map((v) => v.def).join(";");
             const optional = field.typename.endsWith("?") ? "?" : "";
-            const comment = field.comment.replaceAll("\n", "\\n");
+            const comment = field.comment.replaceAll(/[\r\n]+/g, " ");
             let typename = field.typename.replaceAll("?", "");
             typename = convertors[typename].realtype ?? typename;
             buffer.writeLine(`/**`);
-            buffer.writeLine(` * ${comment} (checker: ${checker || "x"})`);
+            buffer.writeLine(
+                ` * ${comment} (location: ${field.refer}) (checker: ${checker || "x"})`
+            );
             buffer.writeLine(` */`);
             if (typename === "int" || typename === "float") {
                 buffer.writeLine(`readonly ${field.name}${optional}: number;`);
@@ -195,12 +197,14 @@ export const genTsTypedef = (path: string, writer: string, maker?: ClassNameMake
                 continue;
             }
             const checker = field.checker.map((v) => v.def).join(";");
-            const comment = field.comment.replaceAll("\n", "\\n");
+            const comment = field.comment.replaceAll(/[\r\n]+/g, " ");
             const optional = field.typename.endsWith("?") ? " | undefined" : "";
             let typename = field.typename.replaceAll("?", "");
             typename = convertors[typename].realtype ?? typename;
             buffer.writeLine(`/**`);
-            buffer.writeLine(` * ${comment} (checker: ${checker || "x"})`);
+            buffer.writeLine(
+                ` * ${comment} (location: ${field.refer}) (checker: ${checker || "x"})`
+            );
             buffer.writeLine(` */`);
             if (typename === "int" || typename === "float") {
                 buffer.writeLine(`readonly ${field.name}: (number${optional})[];`);
@@ -274,12 +278,12 @@ export const genWorkbookTypedef = () => {
             for (const field of sheet.fields) {
                 const checker = field.checker.map((v) => v.def).join(";");
                 const optional = field.typename.endsWith("?") ? "?" : "";
-                const comment = field.comment.replaceAll("\n", "\\n");
+                const comment = field.comment.replaceAll(/[\r\n]+/g, " ");
                 let typename = field.typename.replaceAll("?", "");
                 typename = convertors[typename].realtype ?? typename;
                 buffer.writeLine(`/**`);
                 buffer.writeLine(
-                    ` * ${comment} (checker: ${checker || "x"}) ` +
+                    ` * ${comment} (location: ${field.refer}) (checker: ${checker || "x"}) ` +
                         `(writer: ${field.writers.join("|")})`
                 );
                 buffer.writeLine(` */`);
