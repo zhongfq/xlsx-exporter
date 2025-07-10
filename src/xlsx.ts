@@ -26,6 +26,10 @@ export type Tag = {
     ["!comment"]?: string;
     /** row index */
     ["!index"]?: number;
+    /** field */
+    ["!field"]?: Field;
+    /** row data */
+    ["!row"]?: TRow;
 };
 
 export type TCell = {
@@ -481,6 +485,8 @@ const readBody = (path: string, data: xlsx.WorkBook) => {
                 if (field.typename === "auto") {
                     cell.v = r - start + 1;
                 }
+                cell["!field"] = field;
+                cell["!row"] = row;
                 row[field.name] = cell;
                 if (field.index === 0) {
                     sheet.data[cell.v as string] = row;
@@ -683,36 +689,99 @@ export const getRows = (path: string, sheet: string) => {
     return rows as readonly TRow[];
 };
 
-export type ColumnIndexer = (value: unknown) => boolean;
+export type ColumnIndexer<T> = {
+    has: (value: unknown) => boolean;
+    get: (value: unknown) => T | null;
+};
 
-export const createColumnIndexer = (
+export const createColumnIndexer = <T = TRow>(
     path: string,
     sheetName: string,
     field: string
-): ColumnIndexer => {
+): ColumnIndexer<T> => {
     let workbook: Workbook | null = null;
-    const cache: Map<unknown, boolean> = new Map();
+    const cache: Map<unknown, TCell | null> = new Map();
 
     path = path.replace(/\.xlsx$/, "") + ".xlsx";
 
-    return (value: unknown): boolean => {
+    const hasValue = (value: unknown): boolean => {
         if (cache.has(value)) {
-            return cache.get(value) as boolean;
+            return !!cache.get(value);
         }
         workbook ??= get(path);
         for (const sheet of Object.values(workbook.sheets)) {
             if (sheet.name === sheetName || sheetName === "*") {
-                getColumn(path, sheet.name, field).forEach((cell) => {
-                    if (!isNullOrUndefined(cell)) {
-                        cache.set(cell.v, true);
-                    }
-                });
+                getColumn(path, sheet.name, field).forEach((cell) =>
+                    cache.set(cell.v, isNullOrUndefined(cell) ? null : cell)
+                );
                 if (cache.has(value)) {
-                    return cache.get(value) as boolean;
+                    return !!cache.get(value);
                 }
             }
         }
-        cache.set(value, false);
+        cache.set(value, null);
         return false;
+    };
+
+    const getRow = (value: unknown) => {
+        if (hasValue(value)) {
+            return cache.get(value)?.["!row"] as T | null;
+        }
+        return null;
+    };
+
+    return {
+        has: hasValue,
+        get: getRow,
+    };
+};
+
+export interface RowIndexer<T> {
+    has: (value: unknown) => boolean;
+    get: (value: unknown) => T | null;
+}
+
+export const createRowIndexer = <T = TRow>(
+    path: string,
+    sheetName: string,
+    filter?: (row: T) => boolean
+): RowIndexer<T> => {
+    let workbook: Workbook | null = null;
+    const cache: Map<unknown, T | null> = new Map();
+
+    path = path.replace(/\.xlsx$/, "") + ".xlsx";
+
+    const hasValue = (value: unknown): boolean => {
+        if (cache.has(value)) {
+            return !!cache.get(value);
+        }
+        workbook ??= get(path);
+        for (const sheet of Object.values(workbook.sheets)) {
+            if (sheet.name === sheetName || sheetName === "*") {
+                for (const k in sheet.data) {
+                    const row = sheet.data[k] as T;
+                    if (!filter || filter(row)) {
+                        cache.set(k, row);
+                    }
+                }
+                if (cache.has(value)) {
+                    return !!cache.get(value);
+                }
+            }
+        }
+        cache.set(value, null);
+        return false;
+    };
+
+    const getRow = (value: unknown) => {
+        if (hasValue(value)) {
+            return cache.get(value) as T;
+        }
+        return null;
+    };
+
+    return {
+        has: hasValue,
+        get: getRow,
     };
 };

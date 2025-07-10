@@ -48,7 +48,7 @@ export const RangeCheckerParser: CheckerParser = (arg) => {
 };
 
 export const IndexCheckerParser: CheckerParser = (file, sheetName, key, idx) => {
-    const exists = createColumnIndexer(file, sheetName, key);
+    const indexer = createColumnIndexer(file, sheetName, key);
 
     return (cell, row, field, errors) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -57,7 +57,7 @@ export const IndexCheckerParser: CheckerParser = (file, sheetName, key, idx) => 
             error(`Invalid value at ${cell.r} in ${field.path}#${field.sheet}`);
         }
         if (typeof value !== "object") {
-            return exists(value);
+            return indexer.has(value);
         } else if (Array.isArray(value)) {
             /**
              * [value, value, ...]
@@ -66,10 +66,10 @@ export const IndexCheckerParser: CheckerParser = (file, sheetName, key, idx) => 
             let found = 0;
             for (const item of value) {
                 if (!idx) {
-                    if (exists(item)) {
+                    if (indexer.has(item)) {
                         found++;
                     }
-                } else if (typeof item === "object" && exists(item[idx])) {
+                } else if (typeof item === "object" && indexer.has(item[idx])) {
                     found++;
                 }
             }
@@ -78,7 +78,7 @@ export const IndexCheckerParser: CheckerParser = (file, sheetName, key, idx) => 
             /**
              * {idx: value}
              */
-            return typeof value === "object" && exists(value[idx]);
+            return typeof value === "object" && indexer.has(value[idx]);
         }
     };
 };
