@@ -17,7 +17,7 @@ export type Tag = {
     /** type tag */
     ["!type"]?: string | TagType;
     /** special toString function */
-    ["!toString"]?: (v: TValue, indent: number) => string;
+    ["!toString"]?: (v: TValue, indent: number, format: "ts" | "json" | "lua" | string) => string;
     /** if exists, use this value instead of the object */
     ["!value"]?: TValue;
     /** enum name */

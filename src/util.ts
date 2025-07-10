@@ -39,6 +39,7 @@ export const isNumericKey = (key: string) => {
 
 export const escape = (value: string) => {
     return value
+        .replaceAll("\r\n", "\n")
         .replaceAll("\\", "\\\\")
         .replaceAll('"', '\\"')
         .replaceAll("\n", "\\n")
@@ -216,6 +217,24 @@ export const convertToKeyValue = (
     return result;
 };
 
+/**
+ * Convert a single key table to a multi-key table
+        example:
+        
+        t = {
+            {id1: 1, id2: 1, data: 1111},
+            {id1: 1, id2: 5, data: 2222},
+        }
+
+        convertToMap(t, "id1", "id2")
+        =>
+        t = {
+            [1] = {
+                [1] = {id1: 1, id2: 1, data: 1111},
+                [5] = {id1: 1, id2: 5, data: 2222},
+            }
+        }
+ */
 export const convertToMap = (sheet: Sheet, ...keys: string[]) => {
     const result: { [key: string]: TValue } = {};
     for (const row of Object.values(sheet.data)) {
@@ -234,6 +253,35 @@ export const convertToMap = (sheet: Sheet, ...keys: string[]) => {
                     t[key] = {};
                 }
                 t = t[key] as TObject;
+            }
+        }
+    }
+    return result;
+};
+
+export const convertToFold = (sheet: Sheet, idxKey: string, ...foldKeys: string[]) => {
+    const result: { [key: string]: TObject } = {};
+    for (const key of sortKeys(sheet.data)) {
+        const row = sheet.data[key];
+        const idx = row[idxKey]?.v as string;
+        if (isNullOrUndefined(idx)) {
+            throw new Error(
+                `Key '${idxKey}' is not found at row ${row["!index"]} of sheet ${sheet.name}`
+            );
+        }
+        let value = result[idx];
+        if (!value) {
+            result[idx] = { ...row };
+            value = result[idx];
+            delete value[sheet.fields[0].name];
+            for (const k of foldKeys) {
+                value[k] = [];
+            }
+        }
+        for (const k of foldKeys) {
+            const v = row[k];
+            if (!isNullOrUndefined(v)) {
+                (value[k] as TArray).push(v);
             }
         }
     }

@@ -1,6 +1,13 @@
 import assert from "node:assert";
 import { StringBuffer } from "./stringify";
-import { basename, convertToConfig, convertToKeyValue, convertToMap, toPascalCase } from "./util";
+import {
+    basename,
+    convertToConfig,
+    convertToFold,
+    convertToKeyValue,
+    convertToMap,
+    toPascalCase,
+} from "./util";
 import {
     convertors,
     files,
@@ -98,6 +105,26 @@ export const ConfigProcessor: Processor = (workbook: Workbook, sheet: Sheet) => 
 //-----------------------------------------------------------------------------
 export const MapProcessor: Processor = (workbook: Workbook, sheet: Sheet, ...keys: string[]) => {
     const result = convertToMap(sheet, ...keys);
+    sheet.data = {};
+    for (const k in result) {
+        const v = result[k];
+        const row: TRow = {};
+        row["!type"] = TagType.Row;
+        row["!value"] = v;
+        sheet.data[k] = row;
+    }
+};
+
+//-----------------------------------------------------------------------------
+// Fold
+//-----------------------------------------------------------------------------
+export const FoldProcessor: Processor = (
+    workbook: Workbook,
+    sheet: Sheet,
+    idxKey: string,
+    ...foldKeys: string[]
+) => {
+    const result = convertToFold(sheet, idxKey, ...foldKeys);
     sheet.data = {};
     for (const k in result) {
         const v = result[k];

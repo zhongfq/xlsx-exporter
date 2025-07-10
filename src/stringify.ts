@@ -61,6 +61,7 @@ export class StringBuffer {
 //-----------------------------------------------------------------------------
 type JsonStringifyOption = {
     indent?: number;
+    precision?: number;
 };
 
 export const stringifyJson = (data: TValue, option?: JsonStringifyOption) => {
@@ -77,7 +78,7 @@ export const stringifyJson = (data: TValue, option?: JsonStringifyOption) => {
             if (value === (value | 0)) {
                 buffer.writeString(value.toFixed(0));
             } else {
-                buffer.writeString(value.toString());
+                buffer.writeString(value.toFixed(option?.precision).replace(/0+$/, ""));
             }
         } else if (typeof value === "boolean") {
             buffer.writeString(value.toString());
@@ -111,7 +112,7 @@ export const stringifyJson = (data: TValue, option?: JsonStringifyOption) => {
         }
 
         if (value["!toString"]) {
-            buffer.writeLines(value["!toString"](value, option!.indent!));
+            buffer.writeLines(value["!toString"](value, option!.indent!, "json"));
             return;
         }
 
@@ -140,7 +141,7 @@ export const stringifyJson = (data: TValue, option?: JsonStringifyOption) => {
 
     function writeJsonArray(value: TArray) {
         if (value["!toString"]) {
-            buffer.writeLines(value["!toString"](value, option!.indent!));
+            buffer.writeLines(value["!toString"](value, option!.indent!, "json"));
             return;
         }
 
@@ -171,6 +172,7 @@ export const stringifyJson = (data: TValue, option?: JsonStringifyOption) => {
 type LuaStringifyOption = {
     indent?: number;
     marshal?: string;
+    precision?: number;
 };
 
 export const stringifyLua = (data: TValue, option?: LuaStringifyOption) => {
@@ -199,7 +201,7 @@ export const stringifyLua = (data: TValue, option?: LuaStringifyOption) => {
             if (value === (value | 0)) {
                 buffer.writeString(value.toFixed(0));
             } else {
-                buffer.writeString(value.toString());
+                buffer.writeString(value.toFixed(option?.precision).replace(/0+$/, ""));
             }
         } else if (typeof value === "boolean") {
             buffer.writeString(value.toString());
@@ -233,7 +235,7 @@ export const stringifyLua = (data: TValue, option?: LuaStringifyOption) => {
         }
 
         if (value["!toString"]) {
-            buffer.writeLines(value["!toString"](value, option!.indent!));
+            buffer.writeLines(value["!toString"](value, option!.indent!, "lua"));
             return;
         }
 
@@ -267,7 +269,7 @@ export const stringifyLua = (data: TValue, option?: LuaStringifyOption) => {
 
     function writeLuaArray(value: TArray) {
         if (value["!toString"]) {
-            buffer.writeLines(value["!toString"](value, option!.indent!));
+            buffer.writeLines(value["!toString"](value, option!.indent!, "lua"));
             return;
         }
 
@@ -300,6 +302,7 @@ export const stringifyLua = (data: TValue, option?: LuaStringifyOption) => {
 type TsStringifyOption = {
     indent?: number;
     marshal?: string;
+    precision?: number;
 };
 
 export const stringifyTs = (data: TValue, option?: TsStringifyOption) => {
@@ -327,7 +330,7 @@ export const stringifyTs = (data: TValue, option?: TsStringifyOption) => {
             if (value === (value | 0)) {
                 buffer.writeString(value.toFixed(0));
             } else {
-                buffer.writeString(value.toString());
+                buffer.writeString(value.toFixed(option?.precision).replace(/0+$/, ""));
             }
         } else if (typeof value === "boolean") {
             buffer.writeString(value.toString());
@@ -382,7 +385,7 @@ export const stringifyTs = (data: TValue, option?: TsStringifyOption) => {
         }
 
         if (value["!toString"]) {
-            buffer.writeLines(value["!toString"](value, option!.indent!));
+            buffer.writeLines(value["!toString"](value, option!.indent!, "ts"));
             return;
         }
 
@@ -416,7 +419,7 @@ export const stringifyTs = (data: TValue, option?: TsStringifyOption) => {
 
     function writeTsArray(value: TArray) {
         if (value["!toString"]) {
-            buffer.writeLines(value["!toString"](value, option!.indent!));
+            buffer.writeLines(value["!toString"](value, option!.indent!, "ts"));
             return;
         }
 

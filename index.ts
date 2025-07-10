@@ -14,6 +14,7 @@ import {
 } from "./src/convertor";
 import {
     ConfigProcessor,
+    FoldProcessor,
     KeyValueProcessor,
     MapProcessor,
     mergeSheet,
@@ -57,6 +58,7 @@ registerChecker(INDEX_CHECKER, IndexCheckerParser);
 registerProcessor("config", ConfigProcessor);
 registerProcessor("keyvalue", KeyValueProcessor, 800);
 registerProcessor("map", MapProcessor, 800);
+registerProcessor("fold", FoldProcessor, 800);
 registerProcessor("stringify", StringifyProcessor, 900, true);
 registerProcessor("typedef", TypedefProcessor, 999, true);
 
