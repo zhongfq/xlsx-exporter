@@ -75,7 +75,7 @@ export type Processor = (workbook: Workbook, sheet: Sheet, ...args: string[]) =>
 type ProcessorType = Processor & { priority: number };
 export type Writer = (path: string, data: TObject, processor: string) => void;
 
-const MAX_ERRORS = 20;
+const MAX_ERRORS = 50;
 const MAX_HEADERS = 6;
 export const files: Record<string, Workbook> = {};
 export const checkerParsers: Record<string, CheckerParser> = {};
@@ -435,6 +435,7 @@ const parseBody = () => {
         }
     }
 };
+
 const invokeChecker = (sheet: Sheet, field: Field, errors: string[]) => {
     for (const checker of field.checker) {
         const errorValues: string[] = [];
@@ -443,16 +444,18 @@ const invokeChecker = (sheet: Sheet, field: Field, errors: string[]) => {
             const cell = row[field.name];
             if ((cell.v !== null || checker.force) && !checker(cell, row, field, errorDescs)) {
                 errorValues.push(`${cell.r}: ${cell.s}`);
+                if (errorDescs.length > 0) {
+                    for (const str of errorDescs) {
+                        errorValues.push("    ❌ " + str);
+                    }
+                    errorDescs.length = 0;
+                }
             }
         }
         if (errorValues.length > 0) {
             if (errorValues.length > MAX_ERRORS) {
                 errorValues.length = MAX_ERRORS;
                 errorValues.push("...");
-            }
-            if (errorDescs.length > MAX_ERRORS) {
-                errorDescs.length = MAX_ERRORS;
-                errorDescs.push("...");
             }
             errors.push(
                 `builtin check:\n` +
@@ -461,9 +464,7 @@ const invokeChecker = (sheet: Sheet, field: Field, errors: string[]) => {
                     `    field: ${field.name}\n` +
                     `  checker: ${checker.def}\n` +
                     `   values:\n` +
-                    `      ${errorValues.join("\n      ")}\n` +
-                    `   errors:\n` +
-                    `      ${errorDescs.join("\n      ")}`
+                    `      ${errorValues.join("\n      ")}\n`
             );
         }
     }
