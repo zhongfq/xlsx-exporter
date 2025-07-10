@@ -96,10 +96,22 @@ export const sortKeys = (value: TObject) => {
             if (typeof v1.v === "number" && typeof v2.v === "number") {
                 return v1.v - v2.v;
             }
-            return String(a).localeCompare(String(b));
+            return a.localeCompare(b);
         });
     } else {
-        return keys.sort();
+        const numKeys: string[] = [];
+        const strKeys: string[] = [];
+        for (const k of keys) {
+            const num = Number(k);
+            if (!isNaN(num) && isFinite(num)) {
+                numKeys.push(k);
+            } else {
+                strKeys.push(k);
+            }
+        }
+        numKeys.sort((a, b) => Number(a) - Number(b) || a.localeCompare(b));
+        strKeys.sort((a, b) => a.localeCompare(b));
+        return [...numKeys, ...strKeys];
     }
 };
 
@@ -200,6 +212,30 @@ export const convertToKeyValue = (
         const value = convertValue(row[valueKey], row[typeKey].v as string);
         value["!comment"] = row[commentKey].v as string;
         result[key] = value;
+    }
+    return result;
+};
+
+export const convertToMap = (sheet: Sheet, ...keys: string[]) => {
+    const result: { [key: string]: TValue } = {};
+    for (const row of Object.values(sheet.data)) {
+        let t = result;
+        for (let i = 0; i < keys.length; i++) {
+            const key = row[keys[i]]?.v as string;
+            if (isNullOrUndefined(key)) {
+                throw new Error(
+                    `Key '${keys[i]}' is not found at row ${row["!index"]} of sheet ${sheet.name}`
+                );
+            }
+            if (i === keys.length - 1) {
+                t[key] = row;
+            } else {
+                if (!t[key]) {
+                    t[key] = {};
+                }
+                t = t[key] as TObject;
+            }
+        }
     }
     return result;
 };

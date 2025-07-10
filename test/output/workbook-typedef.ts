@@ -60,6 +60,30 @@ export interface ItemItem {
     readonly hide: { v?:boolean };
 }
 
+// file: test/res/item.xlsx
+export interface ItemMap {
+    /**
+     * ### (checker: x) (writer: client|server)
+     */
+    readonly id: { v:number };
+    /**
+     * 注释 (checker: x) (writer: client|server)
+     */
+    readonly comment: { v:string };
+    /**
+     *  (checker: x) (writer: client|server)
+     */
+    readonly kind: { v:number };
+    /**
+     *  (checker: x) (writer: client|server)
+     */
+    readonly level: { v:number };
+    /**
+     * 物品名称 (checker: x) (writer: client|server)
+     */
+    readonly name: { v:string };
+}
+
 // file: test/res/task.xlsx
 export interface TaskBranch {
     /**

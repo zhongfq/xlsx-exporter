@@ -120,3 +120,51 @@ export interface GeneratedItemItemCol {
     readonly hide: (boolean | undefined)[];
 }
 
+// file: test/res/item.xlsx
+export interface GeneratedItemMapRow {
+    /**
+     * ### (checker: x)
+     */
+    readonly id: number;
+    /**
+     * 注释 (checker: x)
+     */
+    readonly comment: string;
+    /**
+     *  (checker: x)
+     */
+    readonly kind: number;
+    /**
+     *  (checker: x)
+     */
+    readonly level: number;
+    /**
+     * 物品名称 (checker: x)
+     */
+    readonly name: string;
+}
+
+// file: test/res/item.xlsx
+export interface GeneratedItemMapCol {
+    /**
+     * ### (checker: x)
+     */
+    readonly id: (number)[];
+    /**
+     * 注释 (checker: x)
+     */
+    readonly comment: (string)[];
+    /**
+     *  (checker: x)
+     */
+    readonly kind: (number)[];
+    /**
+     *  (checker: x)
+     */
+    readonly level: (number)[];
+    /**
+     * 物品名称 (checker: x)
+     */
+    readonly name: (string)[];
+}
+

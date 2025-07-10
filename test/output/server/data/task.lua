@@ -420,66 +420,6 @@ return {
     },
   },
   main = {
-    [100001] = {
-      args = {
-        amount = 1,
-        id = 11219,
-        type = 5,
-      },
-      condition = "mainline_event",
-      desc = "主线任务8",
-      id = 100001,
-      next_task = 100002,
-      reward = {
-        {
-          count = 10,
-          id = 10201,
-        },
-      },
-      sort = 8,
-      total = true,
-      type = 1,
-    },
-    [100002] = {
-      args = {
-        amount = 3,
-        id = 1003,
-        type = 19,
-      },
-      condition = "mainline_event",
-      desc = "主线任务9",
-      id = 100002,
-      next_task = 100003,
-      reward = {
-        {
-          count = 10,
-          id = 10201,
-        },
-      },
-      sort = 9,
-      total = true,
-      type = 1,
-    },
-    [100003] = {
-      args = {
-        amount = 1,
-        id = 1012,
-        type = 19,
-      },
-      condition = "mainline_event",
-      desc = "主线任务10",
-      id = 100003,
-      next_task = 100304,
-      reward = {
-        {
-          count = 10,
-          id = 10201,
-        },
-      },
-      sort = 10,
-      total = true,
-      type = 1,
-    },
     [1001] = {
       args = {
         amount = 1,
@@ -541,6 +481,105 @@ return {
         },
       },
       sort = 3,
+      total = true,
+      type = 1,
+    },
+    [1013] = {
+      args = {
+        amount = 1,
+        pool_id = 10001,
+      },
+      condition = "recruit_pool",
+      desc = "主线任务12",
+      id = 1013,
+      reward = {
+        {
+          count = 20,
+          id = 10201,
+        },
+      },
+      sort = 12,
+      total = false,
+      type = 1,
+    },
+    [1014] = {
+      args = {
+        amount = 1,
+      },
+      branch_tasks = {
+        200105,
+      },
+      condition = "troop_soldier_amount",
+      desc = "主线任务4",
+      id = 1014,
+      next_task = 100301,
+      reward = {
+        {
+          count = 10,
+          id = 10201,
+        },
+      },
+      sort = 4,
+      total = false,
+      type = 1,
+    },
+    [100001] = {
+      args = {
+        amount = 1,
+        id = 11219,
+        type = 5,
+      },
+      condition = "mainline_event",
+      desc = "主线任务8",
+      id = 100001,
+      next_task = 100002,
+      reward = {
+        {
+          count = 10,
+          id = 10201,
+        },
+      },
+      sort = 8,
+      total = true,
+      type = 1,
+    },
+    [100002] = {
+      args = {
+        amount = 3,
+        id = 1003,
+        type = 19,
+      },
+      condition = "mainline_event",
+      desc = "主线任务9",
+      id = 100002,
+      next_task = 100003,
+      reward = {
+        {
+          count = 10,
+          id = 10201,
+        },
+      },
+      sort = 9,
+      total = true,
+      type = 1,
+    },
+    [100003] = {
+      args = {
+        amount = 1,
+        id = 1012,
+        type = 19,
+      },
+      condition = "mainline_event",
+      desc = "主线任务10",
+      id = 100003,
+      next_task = 100304,
+      reward = {
+        {
+          count = 10,
+          id = 10201,
+        },
+      },
+      sort = 10,
       total = true,
       type = 1,
     },
@@ -628,45 +667,6 @@ return {
       },
       sort = 11,
       total = true,
-      type = 1,
-    },
-    [1013] = {
-      args = {
-        amount = 1,
-        pool_id = 10001,
-      },
-      condition = "recruit_pool",
-      desc = "主线任务12",
-      id = 1013,
-      reward = {
-        {
-          count = 20,
-          id = 10201,
-        },
-      },
-      sort = 12,
-      total = false,
-      type = 1,
-    },
-    [1014] = {
-      args = {
-        amount = 1,
-      },
-      branch_tasks = {
-        200105,
-      },
-      condition = "troop_soldier_amount",
-      desc = "主线任务4",
-      id = 1014,
-      next_task = 100301,
-      reward = {
-        {
-          count = 10,
-          id = 10201,
-        },
-      },
-      sort = 4,
-      total = false,
       type = 1,
     },
   },

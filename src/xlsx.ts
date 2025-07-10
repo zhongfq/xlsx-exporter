@@ -24,6 +24,8 @@ export type Tag = {
     ["!enum"]?: string;
     /** comment */
     ["!comment"]?: string;
+    /** row index */
+    ["!index"]?: number;
 };
 
 export type TCell = {
@@ -470,6 +472,7 @@ const readBody = (path: string, data: xlsx.WorkBook) => {
         loop: for (let r = start; r < sheetData.length; r++) {
             const row: TRow = {};
             row["!type"] = TagType.Row;
+            row["!index"] = r + 1;
             for (const field of sheet.fields) {
                 const cell: TCell = readCell(sheetData, r, field.index);
                 if (field.index === 0 && cell.v === "") {

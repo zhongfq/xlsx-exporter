@@ -18,3 +18,11 @@
 ---@field name? string 物品类型
 ---@field value? string 
 
+---file: test/res/item.xlsx
+---@class xlsx.server.ItemMap
+---@field id integer ###
+---@field comment string 注释
+---@field kind integer 
+---@field level integer 
+---@field name string 物品名称
+

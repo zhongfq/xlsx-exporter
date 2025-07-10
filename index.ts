@@ -15,6 +15,7 @@ import {
 import {
     ConfigProcessor,
     KeyValueProcessor,
+    MapProcessor,
     mergeSheet,
     registerStringifyRule,
     simpleSheet,
@@ -55,6 +56,7 @@ registerChecker(INDEX_CHECKER, IndexCheckerParser);
 
 registerProcessor("config", ConfigProcessor);
 registerProcessor("keyvalue", KeyValueProcessor, 800);
+registerProcessor("map", MapProcessor, 800);
 registerProcessor("stringify", StringifyProcessor, 900, true);
 registerProcessor("typedef", TypedefProcessor, 999, true);
 

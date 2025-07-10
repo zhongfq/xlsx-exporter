@@ -1,6 +1,6 @@
 import assert from "node:assert";
 import { StringBuffer } from "./stringify";
-import { basename, convertToConfig, convertToKeyValue, toPascalCase } from "./util";
+import { basename, convertToConfig, convertToKeyValue, convertToMap, toPascalCase } from "./util";
 import {
     convertors,
     files,
@@ -90,6 +90,21 @@ export const ConfigProcessor: Processor = (workbook: Workbook, sheet: Sheet) => 
     for (const k in writers) {
         const writer = writers[k];
         writer(workbook.path, config, "config");
+    }
+};
+
+//-----------------------------------------------------------------------------
+// Map
+//-----------------------------------------------------------------------------
+export const MapProcessor: Processor = (workbook: Workbook, sheet: Sheet, ...keys: string[]) => {
+    const result = convertToMap(sheet, ...keys);
+    sheet.data = {};
+    for (const k in result) {
+        const v = result[k];
+        const row: TRow = {};
+        row["!type"] = TagType.Row;
+        row["!value"] = v;
+        sheet.data[k] = row;
     }
 };
 
