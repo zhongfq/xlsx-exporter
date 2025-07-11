@@ -1,6 +1,5 @@
-import { basename } from "node:path";
 import { StringBuffer } from "./stringify";
-import { toPascalCase } from "./util";
+import { filename, toPascalCase } from "./util";
 import { convertors, files, get } from "./xlsx";
 
 type ClassNameMaker = (className: string) => string;
@@ -8,7 +7,7 @@ type ClassNameMaker = (className: string) => string;
 export const genTsTypedef = (path: string, writer: string, maker?: ClassNameMaker) => {
     const workbook = get(path);
     const buffer = new StringBuffer(4);
-    const name = basename(path);
+    const name = filename(path);
     maker = maker ?? ((className) => className);
     for (const k of Object.keys(workbook.sheets).sort()) {
         const sheet = workbook.sheets[k];
@@ -87,7 +86,7 @@ export const genLuaTypedef = (path: string, writer: string, maker?: ClassNameMak
     }
     const buffer = new StringBuffer(4);
     const workbook = get(path);
-    const name = basename(path);
+    const name = filename(path);
     for (const sheet of Object.values(workbook.sheets)) {
         const className = maker(toPascalCase(`${name}_${sheet.name}`));
         buffer.writeLine(`---file: ${path}`);
@@ -124,7 +123,7 @@ export const genWorkbookTypedef = () => {
     buffer.writeLine(`// AUTO GENERATED, DO NOT MODIFY!\n`);
     for (const path of Object.keys(files).sort()) {
         const workbook = get(path);
-        const name = basename(path);
+        const name = filename(path);
         for (const k of Object.keys(workbook.sheets).sort()) {
             const sheet = workbook.sheets[k];
             const className = toPascalCase(`${name}_${sheet.name}`);

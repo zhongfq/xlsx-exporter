@@ -1,5 +1,5 @@
-import { checkValue, escape, isNumericKey, sortKeys } from "./util";
-import { TagType, TArray, TCell, TObject, TValue } from "./xlsx";
+import { escape, isNumericKey, sortKeys } from "./util";
+import { checkValue, TagType, TArray, TCell, TObject, TValue } from "./xlsx";
 
 export class StringBuffer {
     readonly data: string[] = [];

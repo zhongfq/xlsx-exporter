@@ -179,6 +179,13 @@ export const registerWriter = (name: string, writer: Writer) => {
     writers[name] = writer;
 };
 
+export const checkValue = (value: TValue): TValue => {
+    if (value && typeof value === "object" && value["!value"]) {
+        return checkValue(value["!value"]);
+    }
+    return value;
+};
+
 export const isNullOrUndefined = (value: TValue) => {
     if (value === null || value === undefined) {
         return true;

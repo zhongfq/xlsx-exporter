@@ -4,13 +4,13 @@
 
 ## 功能特性
 
--   📊 **Excel 解析** - 支持解析.xlsx 格式的 Excel 文件
--   🔄 **多语言输出** - 支持输出 TypeScript、Lua、JSON 等格式
--   🏷️ **类型定义生成** - 自动生成 TypeScript 和 Lua 的类型定义
--   ✅ **数据验证** - 内置数据检查器确保数据质量
--   🔧 **可扩展架构** - 支持自定义转换器、检查器和处理器
--   📝 **注释支持** - 保留 Excel 中的注释信息
--   🎯 **配置驱动** - 通过 Excel 表格配置数据结构
+- 📊 **Excel 解析** - 支持解析.xlsx 格式的 Excel 文件
+- 🔄 **多语言输出** - 支持输出 TypeScript、Lua、JSON 等格式
+- 🏷️ **类型定义生成** - 自动生成 TypeScript 和 Lua 的类型定义
+- ✅ **数据验证** - 内置数据检查器确保数据质量
+- 🔧 **可扩展架构** - 支持自定义转换器、检查器和处理器
+- 📝 **注释支持** - 保留 Excel 中的注释信息
+- 🎯 **配置驱动** - 通过 Excel 表格配置数据结构
 
 ## 安装
 
@@ -24,21 +24,88 @@ npm i
 
 Excel 文件需要按照特定格式组织：
 
--   第 1 行是配置表格处理器（可选）
--   第 2 行是字段名：id, comment ...
--   第 3 行是数据类型：int, float, string, string? ...
--   第 4 行是导出：x 代表不导出，client 只导客户端，server 只导服务端，不填默认导出双端
--   第 5 行是检查：x 代表不检查，可用的检查器见下面
--   第 6 行是注释
+- 第 1 行是配置表格处理器（可选）
+- 第 2 行是字段名：id, comment ...
+- 第 3 行是数据类型：int, float, string, string? ...
+- 第 4 行是导出：x 代表不导出，client 只导客户端，server 只导服务端，不填默认导出双端
+- 第 5 行是检查：x 代表不检查，可用的检查器见下面
+- 第 6 行是注释
 
-| id  | comment |    name    |  desc   | positon |     item     |    task    |              reward               | cond        |
-| :-: | :-----: | :--------: | :-----: | :-----: | :----------: | :--------: | :-------------------------------: | ----------- |
-| int | string? |   string   | string? |   int   |     int      |    int     |                int                | int         |
-| >>  |    x    |   client   | server  |         |              |            |                                   |             |
-| !!! |    x    | @TreeChker |    x    | [0,1,2] | item#item.id | task#\*.id | id=reward#\*.id<br />@CheckReward | #level.id   |
-| ### |  解释   |    名字    |  描述   |  位置   |     物品     |    任务    |               奖励                | 条件        |
-|  1  |   枪    |    关哥    | 大长枪  |    1    |  {101, 103}  |    666     |             {id = 3}              | 1           |
-|  2  |   枪    |    张飞    | 大长枪  |    1    |     101      |   {666}    |              {id=4}               | {1， 2， 3} |
+<table style="text-align: center;">
+  <tr>
+    <td colspan="8" style="text-align: left; background-color: #f0f0f0; font-weight: bold;">@config;@stringify(merge);@typedef</td>
+  </tr>
+  <tr>
+    <th>id</th>
+    <th>name</th>
+    <th>desc</th>
+    <th>positon</th>
+    <th>item</th>
+    <th>task</th>
+    <th>reward</th>
+    <th>cond</th>
+  </tr>
+  <tr>
+    <td>int</td>
+    <td>string</td>
+    <td>string?</td>
+    <td>int</td>
+    <td>int</td>
+    <td>int</td>
+    <td>int</td>
+    <td>int</td>
+  </tr>
+  <tr>
+    <td>>></td>
+    <td>client</td>
+    <td>server</td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>!!!</td>
+    <td>@TreeChker</td>
+    <td>x</td>
+    <td>[0,1,2]</td>
+    <td>item#item.id</td>
+    <td>task#*.id</td>
+    <td>id=reward#*.id<br />@CheckReward</td>
+    <td>#level.id</td>
+  </tr>
+  <tr>
+    <td>###</td>
+    <td>名字</td>
+    <td>描述</td>
+    <td>位置</td>
+    <td>物品</td>
+    <td>任务</td>
+    <td>奖励</td>
+    <td>条件</td>
+  </tr>
+  <tr>
+    <td>1</td>
+    <td>关哥</td>
+    <td>大长枪</td>
+    <td>1</td>
+    <td>{101, 103}</td>
+    <td>666</td>
+    <td>{id = 3}</td>
+    <td>1</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td>张飞</td>
+    <td>大长枪</td>
+    <td>1</td>
+    <td>101</td>
+    <td>{666}</td>
+    <td>{id=4}</td>
+    <td>{1， 2， 3}</td>
+  </tr>
+</table>
 
 ### 2. 基本用法
 
@@ -125,23 +192,23 @@ xlsx.parse(["data/item.xlsx", "data/task.xlsx"]);
 
 ## 支持的数据类型
 
--   `int` - 整数
--   `float` - 浮点数
--   `string` - 字符串
--   `bool` - 布尔值
--   `json` - JSON 对象
--   `table` - lua 表格数据
--   `auto` - 自动类型推断
+- `int` - 整数
+- `float` - 浮点数
+- `string` - 字符串
+- `bool` - 布尔值
+- `json` - JSON 对象
+- `table` - lua 表格数据
+- `auto` - 自动类型推断
 
 ## 数据验证
 
 内置多种数据检查器：
 
--   `size` - 数据大小检查
--   `range` - 数值范围检查
--   `index` - 索引验证
--   `follow` - 依赖关系检查
--   `expr` - 表达式验证
+- `size` - 数据大小检查
+- `range` - 数值范围检查
+- `index` - 索引验证
+- `follow` - 依赖关系检查
+- `expr` - 表达式验证
 
 ## 输出格式
 

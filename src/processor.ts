@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import { convertToConfig, convertToFold, convertToKeyValue, convertToMap } from "./util";
+import { convertToConfig, convertToFold, convertToKeyValue, convertToMap } from "./transform";
 import { filter, Processor, Sheet, TagType, TObject, TRow, Workbook, writers } from "./xlsx";
 
 //-----------------------------------------------------------------------------
@@ -70,13 +70,24 @@ export const KeyValueProcessor: Processor = (workbook: Workbook, sheet: Sheet) =
 //-----------------------------------------------------------------------------
 // Config
 //-----------------------------------------------------------------------------
-export const ConfigProcessor: Processor = (workbook: Workbook, sheet: Sheet) => {
-    delete workbook.sheets[sheet.name];
+export const ConfigProcessor: Processor = (workbook: Workbook, sheet: Sheet, action?: string) => {
     const config = convertToConfig(sheet);
     config["!name"] = sheet.name;
+    sheet.data = {};
+    for (const k in config) {
+        const v = config[k];
+        const row: TRow = {};
+        row["!type"] = TagType.Row;
+        row["!value"] = v;
+        sheet.data[k] = row;
+    }
     for (const k in writers) {
         const writer = writers[k];
         writer(workbook.path, config, "config");
+    }
+
+    if (action !== "keep_sheet") {
+        delete workbook.sheets[sheet.name];
     }
 };
 
