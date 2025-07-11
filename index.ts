@@ -38,6 +38,7 @@ export * from "./src/convertor";
 export * from "./src/processor";
 export * from "./src/stringify";
 export * from "./src/table";
+export * from "./src/typedef";
 export * from "./src/util";
 export * from "./src/xlsx";
 

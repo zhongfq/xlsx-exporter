@@ -30,6 +30,8 @@ export type Tag = {
     ["!field"]?: Field;
     /** row data */
     ["!row"]?: TRow;
+    /** row key */
+    ["!key"]?: TCell;
 };
 
 export type TCell = {
@@ -491,6 +493,7 @@ const readBody = (path: string, data: xlsx.WorkBook) => {
                 cell["!row"] = row;
                 row[field.name] = cell;
                 if (field.index === 0) {
+                    row["!key"] = cell;
                     sheet.data[cell.v as string] = row;
                 }
             }
@@ -560,7 +563,8 @@ const applyChecker = () => {
                 try {
                     invokeChecker(sheet, field, errors);
                 } catch (e) {
-                    error(String(e));
+                    console.error(e);
+                    error(`Error checking field '${field.name}' in '${file}#${sheetName}'`);
                 }
             }
         }
@@ -706,7 +710,8 @@ export type ColumnIndexer<T> = {
 export const createColumnIndexer = <T = TRow>(
     path: string,
     sheetName: string,
-    field: string
+    field: string,
+    filter?: (row: T) => boolean
 ): ColumnIndexer<T> => {
     let workbook: Workbook | null = null;
     const cache: Map<unknown, TCell | null> = new Map();
@@ -721,7 +726,7 @@ export const createColumnIndexer = <T = TRow>(
         for (const sheet of Object.values(workbook.sheets)) {
             if (sheet.name === sheetName || sheetName === "*") {
                 getColumn(path, sheet.name, field).forEach((cell) => {
-                    if (cell) {
+                    if (cell && (!filter || filter(cell["!row"] as T))) {
                         cache.set(cell.v, isNullOrUndefined(cell) ? null : cell);
                     }
                 });
@@ -748,8 +753,8 @@ export const createColumnIndexer = <T = TRow>(
 };
 
 export interface RowIndexer<T> {
-    has: (value: unknown) => boolean;
-    get: (value: unknown) => T | null;
+    has: (value: string | number) => boolean;
+    get: (value: string | number) => T | null;
 }
 
 export const createRowIndexer = <T = TRow>(
@@ -762,7 +767,7 @@ export const createRowIndexer = <T = TRow>(
 
     path = path.replace(/\.xlsx$/, "") + ".xlsx";
 
-    const hasValue = (value: unknown): boolean => {
+    const hasValue = (value: string | number): boolean => {
         if (cache.has(value)) {
             return !!cache.get(value);
         }
@@ -770,9 +775,10 @@ export const createRowIndexer = <T = TRow>(
         for (const sheet of Object.values(workbook.sheets)) {
             if (sheet.name === sheetName || sheetName === "*") {
                 for (const k in sheet.data) {
-                    const row = sheet.data[k] as T;
-                    if (!filter || filter(row)) {
-                        cache.set(k, row);
+                    const row = sheet.data[k] as TRow;
+                    if (!filter || filter(row as T)) {
+                        assert(!!row["!key"], "key not found");
+                        cache.set(row["!key"]?.v, row as T);
                     }
                 }
                 if (cache.has(value)) {
@@ -784,7 +790,7 @@ export const createRowIndexer = <T = TRow>(
         return false;
     };
 
-    const getRow = (value: unknown) => {
+    const getRow = (value: string | number) => {
         if (hasValue(value)) {
             return cache.get(value) as T;
         }

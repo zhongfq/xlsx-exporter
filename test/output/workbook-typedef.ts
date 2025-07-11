@@ -35,11 +35,11 @@ export interface ItemItem {
      */
     readonly desc: { v:string };
     /**
-     * 物品类型\nconfig.ITEM_TYPE (location: E1) (checker: x) (writer: client|server)
+     * 物品类型 config.ITEM_TYPE (location: E1) (checker: x) (writer: client|server)
      */
     readonly item_type: { v:number };
     /**
-     * 背包类型\nconfig.BAG_TYPE (location: F1) (checker: x) (writer: client|server)
+     * 背包类型 config.BAG_TYPE (location: F1) (checker: x) (writer: client|server)
      */
     readonly bag_id: { v:number };
     /**

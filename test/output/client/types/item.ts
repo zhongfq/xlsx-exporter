@@ -95,11 +95,11 @@ export interface GeneratedItemItemCol {
      */
     readonly desc: (string)[];
     /**
-     * 物品类型\nconfig.ITEM_TYPE (location: E1) (checker: x)
+     * 物品类型 config.ITEM_TYPE (location: E1) (checker: x)
      */
     readonly item_type: (number)[];
     /**
-     * 背包类型\nconfig.BAG_TYPE (location: F1) (checker: x)
+     * 背包类型 config.BAG_TYPE (location: F1) (checker: x)
      */
     readonly bag_id: (number)[];
     /**
