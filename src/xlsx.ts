@@ -1,4 +1,5 @@
 import xlsx from "xlsx";
+import { type StringifyContext } from "./stringify";
 import {
     checkType,
     copy,
@@ -29,8 +30,8 @@ export type Tag = {
     ["!name"]?: string;
     /** type tag */
     ["!type"]?: string | Type;
-    /** special toString function */
-    ["!toString"]?: (v: TValue, indent: number, format: "ts" | "json" | "lua" | string) => string;
+    /** special stringify function */
+    ["!stringify"]?: (v: TValue, ctx: StringifyContext) => void;
     /** enum name */
     ["!enum"]?: string;
     /** comment */
@@ -616,6 +617,11 @@ export const filter = (workbook: Workbook, writer: string, headerOnly: boolean =
             if (sheet.data["!type"] === Type.Sheet) {
                 for (const k of filterKeys(sheet.data)) {
                     const row = copy(checkType<TRow>(sheet.data[k], Type.Row));
+                    for (const k in row) {
+                        if (!k.startsWith("!") && typeof row[k] === "object") {
+                            row[k]["!row"] = row;
+                        }
+                    }
                     resultSheet.data[k] = row;
                     for (const field of sheet.fields) {
                         if (!field.writers.includes(writer)) {
@@ -668,7 +674,7 @@ export type ColumnIndexer<T> = {
     get: (value: unknown) => T | null;
 };
 
-export const createColumnIndexer = <T = TObject>(
+export const createColumnIndexer = <T = TRow>(
     path: string,
     sheetName: string,
     field: string,

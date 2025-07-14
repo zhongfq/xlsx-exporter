@@ -168,7 +168,13 @@ export const filterValues = <T>(
 export const copy = <T>(value: T): T => {
     if (value && typeof value === "object") {
         if (Array.isArray(value)) {
-            return value.map(copy) as T;
+            const arr = value.map(copy);
+            for (const k in value) {
+                if (k.startsWith("!")) {
+                    arr[k] = value[k] as TValue;
+                }
+            }
+            return arr as T;
         } else {
             const obj: TObject = {};
             for (const k in value) {
