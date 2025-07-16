@@ -1,4 +1,4 @@
-import { escape, filterKeys, isNullOrUndefined, isNumericKey } from "./util";
+import { escape, isNullOrUndefined, isNumericKey, keys } from "./util";
 import { TArray, TCell, TObject, TValue, Type } from "./xlsx";
 
 export class StringBuffer {
@@ -139,19 +139,19 @@ export const stringifyJson = (data: TValue, option?: JsonStringifyOption) => {
             return;
         }
 
-        const keys = filterKeys(value, true, (v) => !isNullOrUndefined(v));
+        const ks = keys(value, true, (v) => !isNullOrUndefined(v));
         const space = option!.indent! > 0 ? " " : "";
         buffer.writeString("{");
         buffer.linefeed();
         buffer.indent();
-        for (let i = 0; i < keys.length; i++) {
-            const k = keys[i];
+        for (let i = 0; i < ks.length; i++) {
+            const k = ks[i];
             const v = value[k];
             stacks.push(k);
             buffer.padding();
             buffer.writeString(`"${k}":${space}`);
             writeJsonValue(v, false);
-            if (i < keys.length - 1) {
+            if (i < ks.length - 1) {
                 buffer.writeString(",");
             }
             buffer.linefeed();
@@ -266,13 +266,13 @@ export const stringifyLua = (data: TValue, option?: LuaStringifyOption) => {
             return;
         }
 
-        const keys = filterKeys(value, true, (v) => !isNullOrUndefined(v));
+        const ks = keys(value, true, (v) => !isNullOrUndefined(v));
         const space = option!.indent! > 0 ? " " : "";
         buffer.writeString("{");
         buffer.linefeed();
         buffer.indent();
-        for (let i = 0; i < keys.length; i++) {
-            const k = keys[i];
+        for (let i = 0; i < ks.length; i++) {
+            const k = ks[i];
             const v = value[k];
             stacks.push(k);
             writeLuaComment(v);
@@ -377,11 +377,11 @@ export const stringifyTs = (data: TValue, option?: TsStringifyOption) => {
         } else if (value["!enum"]) {
             const enumName = value["!enum"];
             const enumComment = value["!comment"];
-            const keys = filterKeys(value as TObject, true, (v) => !isNullOrUndefined(v));
+            const ks = keys(value as TObject, true, (v) => !isNullOrUndefined(v));
             writeTsComment(enumComment, enumBuffer);
             enumBuffer.writeLine(`export enum ${enumName} {`);
             enumBuffer.indent();
-            for (const k of keys) {
+            for (const k of ks) {
                 const v = (value as TObject)[k] as TCell;
                 const valueComment = v["!comment"];
                 writeTsComment(valueComment, enumBuffer);
@@ -421,13 +421,13 @@ export const stringifyTs = (data: TValue, option?: TsStringifyOption) => {
             return;
         }
 
-        const keys = filterKeys(value, true, (v) => !isNullOrUndefined(v));
+        const ks = keys(value, true, (v) => !isNullOrUndefined(v));
         const space = option!.indent! > 0 ? " " : "";
         buffer.writeString("{");
         buffer.linefeed();
         buffer.indent();
-        for (let i = 0; i < keys.length; i++) {
-            const k = keys[i];
+        for (let i = 0; i < ks.length; i++) {
+            const k = ks[i];
             const v = value[k];
             stacks.push(k);
             if (v && typeof v === "object" && v["!comment"]) {

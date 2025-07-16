@@ -26,3 +26,27 @@
 ---@field level integer 
 ---@field name string 物品名称
 
+---file: test/res/item.xlsx
+---@class xlsx.server.ItemMapObj
+---@field id integer ###
+---@field comment string 注释
+---@field kind integer 
+---@field level integer 
+---@field name string 物品名称
+
+---file: test/res/item.xlsx
+---@class xlsx.server.ItemMapArr
+---@field id integer ###
+---@field comment string 注释
+---@field kind integer 
+---@field level integer 
+---@field name string 物品名称
+
+---file: test/res/item.xlsx
+---@class xlsx.server.ItemMapField
+---@field id integer ###
+---@field comment string 注释
+---@field kind integer 
+---@field level integer 
+---@field name string 物品名称
+

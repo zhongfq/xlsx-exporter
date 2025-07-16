@@ -168,3 +168,147 @@ export interface GeneratedItemMapCol {
     readonly name: (string)[];
 }
 
+// file: test/res/item.xlsx
+export interface GeneratedItemMapArrRow {
+    /**
+     * ### (location: A2) (checker: x)
+     */
+    readonly id: number;
+    /**
+     * 注释 (location: B2) (checker: x)
+     */
+    readonly comment: string;
+    /**
+     *  (location: C2) (checker: x)
+     */
+    readonly kind: number;
+    /**
+     *  (location: D2) (checker: x)
+     */
+    readonly level: number;
+    /**
+     * 物品名称 (location: E2) (checker: x)
+     */
+    readonly name: string;
+}
+
+// file: test/res/item.xlsx
+export interface GeneratedItemMapArrCol {
+    /**
+     * ### (location: A2) (checker: x)
+     */
+    readonly id: (number)[];
+    /**
+     * 注释 (location: B2) (checker: x)
+     */
+    readonly comment: (string)[];
+    /**
+     *  (location: C2) (checker: x)
+     */
+    readonly kind: (number)[];
+    /**
+     *  (location: D2) (checker: x)
+     */
+    readonly level: (number)[];
+    /**
+     * 物品名称 (location: E2) (checker: x)
+     */
+    readonly name: (string)[];
+}
+
+// file: test/res/item.xlsx
+export interface GeneratedItemMapFieldRow {
+    /**
+     * ### (location: A2) (checker: x)
+     */
+    readonly id: number;
+    /**
+     * 注释 (location: B2) (checker: x)
+     */
+    readonly comment: string;
+    /**
+     *  (location: C2) (checker: x)
+     */
+    readonly kind: number;
+    /**
+     *  (location: D2) (checker: x)
+     */
+    readonly level: number;
+    /**
+     * 物品名称 (location: E2) (checker: x)
+     */
+    readonly name: string;
+}
+
+// file: test/res/item.xlsx
+export interface GeneratedItemMapFieldCol {
+    /**
+     * ### (location: A2) (checker: x)
+     */
+    readonly id: (number)[];
+    /**
+     * 注释 (location: B2) (checker: x)
+     */
+    readonly comment: (string)[];
+    /**
+     *  (location: C2) (checker: x)
+     */
+    readonly kind: (number)[];
+    /**
+     *  (location: D2) (checker: x)
+     */
+    readonly level: (number)[];
+    /**
+     * 物品名称 (location: E2) (checker: x)
+     */
+    readonly name: (string)[];
+}
+
+// file: test/res/item.xlsx
+export interface GeneratedItemMapObjRow {
+    /**
+     * ### (location: A2) (checker: x)
+     */
+    readonly id: number;
+    /**
+     * 注释 (location: B2) (checker: x)
+     */
+    readonly comment: string;
+    /**
+     *  (location: C2) (checker: x)
+     */
+    readonly kind: number;
+    /**
+     *  (location: D2) (checker: x)
+     */
+    readonly level: number;
+    /**
+     * 物品名称 (location: E2) (checker: x)
+     */
+    readonly name: string;
+}
+
+// file: test/res/item.xlsx
+export interface GeneratedItemMapObjCol {
+    /**
+     * ### (location: A2) (checker: x)
+     */
+    readonly id: (number)[];
+    /**
+     * 注释 (location: B2) (checker: x)
+     */
+    readonly comment: (string)[];
+    /**
+     *  (location: C2) (checker: x)
+     */
+    readonly kind: (number)[];
+    /**
+     *  (location: D2) (checker: x)
+     */
+    readonly level: (number)[];
+    /**
+     * 物品名称 (location: E2) (checker: x)
+     */
+    readonly name: (string)[];
+}
+

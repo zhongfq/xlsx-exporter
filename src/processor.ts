@@ -1,5 +1,5 @@
 import { convertToConfig, convertToDefine, convertToFold, convertToMap } from "./transform";
-import { filterKeys } from "./util";
+import { keys } from "./util";
 import { assert, copyOf, error, Processor, Sheet, TObject, Workbook, writers } from "./xlsx";
 
 //-----------------------------------------------------------------------------
@@ -17,7 +17,7 @@ export const mergeSheet = (workbook: Workbook, writer: string) => {
     const result: TObject = {};
     for (const sheetName in workbook.sheets) {
         const sheet = workbook.sheets[sheetName];
-        for (const k of filterKeys(sheet.data)) {
+        for (const k of keys(sheet.data)) {
             const row = sheet.data[k];
             if (result[k]) {
                 error(`Duplicate key: ${k}`);
@@ -76,8 +76,13 @@ export const ConfigProcessor: Processor = (workbook: Workbook, sheet: Sheet) => 
 //-----------------------------------------------------------------------------
 // Map
 //-----------------------------------------------------------------------------
-export const MapProcessor: Processor = (workbook: Workbook, sheet: Sheet, ...keys: string[]) => {
-    sheet.data = convertToMap(sheet, ...keys);
+export const MapProcessor: Processor = (
+    workbook: Workbook,
+    sheet: Sheet,
+    value: string,
+    ...keys: string[]
+) => {
+    sheet.data = convertToMap(sheet, value, ...keys);
 };
 
 //-----------------------------------------------------------------------------

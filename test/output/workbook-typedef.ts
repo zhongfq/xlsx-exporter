@@ -84,6 +84,78 @@ export interface ItemMap {
     name: { v:string };
 }
 
+// file: test/res/item.xlsx
+export interface ItemMapArr {
+    /**
+     * ### (location: A2) (checker: x) (writer: client|server)
+     */
+    id: { v:number };
+    /**
+     * 注释 (location: B2) (checker: x) (writer: client|server)
+     */
+    comment: { v:string };
+    /**
+     *  (location: C2) (checker: x) (writer: client|server)
+     */
+    kind: { v:number };
+    /**
+     *  (location: D2) (checker: x) (writer: client|server)
+     */
+    level: { v:number };
+    /**
+     * 物品名称 (location: E2) (checker: x) (writer: client|server)
+     */
+    name: { v:string };
+}
+
+// file: test/res/item.xlsx
+export interface ItemMapField {
+    /**
+     * ### (location: A2) (checker: x) (writer: client|server)
+     */
+    id: { v:number };
+    /**
+     * 注释 (location: B2) (checker: x) (writer: client|server)
+     */
+    comment: { v:string };
+    /**
+     *  (location: C2) (checker: x) (writer: client|server)
+     */
+    kind: { v:number };
+    /**
+     *  (location: D2) (checker: x) (writer: client|server)
+     */
+    level: { v:number };
+    /**
+     * 物品名称 (location: E2) (checker: x) (writer: client|server)
+     */
+    name: { v:string };
+}
+
+// file: test/res/item.xlsx
+export interface ItemMapObj {
+    /**
+     * ### (location: A2) (checker: x) (writer: client|server)
+     */
+    id: { v:number };
+    /**
+     * 注释 (location: B2) (checker: x) (writer: client|server)
+     */
+    comment: { v:string };
+    /**
+     *  (location: C2) (checker: x) (writer: client|server)
+     */
+    kind: { v:number };
+    /**
+     *  (location: D2) (checker: x) (writer: client|server)
+     */
+    level: { v:number };
+    /**
+     * 物品名称 (location: E2) (checker: x) (writer: client|server)
+     */
+    name: { v:string };
+}
+
 // file: test/res/task.xlsx
 export interface TaskBranch {
     /**

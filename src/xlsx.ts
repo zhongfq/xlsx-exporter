@@ -1,6 +1,6 @@
 import xlsx from "xlsx";
 import { type StringifyContext } from "./stringify";
-import { checkType, filterKeys, filterValues, isNullOrUndefined, toRef, toString } from "./util";
+import { checkType, isNullOrUndefined, keys, toRef, toString, values } from "./util";
 
 export const RANGE_CHECKER = "xlsx.checker.range";
 export const INDEX_CHECKER = "xlsx.checker.index";
@@ -246,7 +246,11 @@ const parseProcessor = (str: string) => {
             }
             return {
                 name,
-                args: args ? args.split(",").map((a) => a.trim()) : [],
+                args: args
+                    ? Array.from(args.matchAll(/{[^{}]+}|\[[^[\]]+\]|[^,]+/g)).map((a) =>
+                          a[0].trim()
+                      )
+                    : [],
             };
         })
         .filter((p) => p.name);
@@ -508,7 +512,7 @@ const parseBody = () => {
         for (const sheetName in workbook.sheets) {
             using _ = doing(`Parsing sheet '${sheetName}' in '${file}'`);
             const sheet = workbook.sheets[sheetName];
-            for (const row of filterValues<TRow>(sheet.data)) {
+            for (const row of values<TRow>(sheet.data)) {
                 for (const field of sheet.fields) {
                     const cell = row[field.name];
                     checkType(cell, Type.Cell);
@@ -523,7 +527,7 @@ const invokeChecker = (sheet: Sheet, field: Field, errors: string[]) => {
     for (const checker of field.checker) {
         const errorValues: string[] = [];
         const errorDescs: string[] = [];
-        for (const row of filterValues<TRow>(sheet.data)) {
+        for (const row of values<TRow>(sheet.data)) {
             const cell = row[field.name];
             checkType(cell, Type.Cell);
             if ((cell.v !== null || checker.force) && !checker.exec(cell, row, field, errorDescs)) {
@@ -659,7 +663,7 @@ export const copyOf = (workbook: Workbook, writer: string, headerOnly: boolean =
         if (!headerOnly) {
             resultSheet.data = copy(sheet.data);
             if (sheet.data["!type"] === Type.Sheet) {
-                for (const k of filterKeys(sheet.data)) {
+                for (const k of keys(sheet.data)) {
                     const row = checkType<TRow>(sheet.data[k], Type.Row);
                     for (const k in row) {
                         if (!k.startsWith("!") && typeof row[k] === "object") {
@@ -695,7 +699,7 @@ export const getRows = <T = TRow>(path: string, sheet: string) => {
     if (!sheetData) {
         throw new Error(`Sheet not found: ${path}#${sheet}`);
     }
-    return filterValues<TObject>(sheetData).map((v) => checkType<T>(v, Type.Row));
+    return values<TObject>(sheetData).map((v) => checkType<T>(v, Type.Row));
 };
 
 export const getColumn = (path: string, sheet: string, field: string) => {
@@ -777,7 +781,7 @@ export const createRowIndexer = <T = TObject>(
         workbook ??= get(path);
         for (const sheet of Object.values(workbook.sheets)) {
             if (sheet.name === sheetName || sheetName === "*") {
-                for (const row of filterValues<TRow>(sheet.data)) {
+                for (const row of values<TRow>(sheet.data)) {
                     if (!filter || filter(row as T)) {
                         assert(!!row["!key"], "key not found");
                         cache.set(row["!key"]?.v, row as T);

@@ -122,17 +122,17 @@ export const format = (str: string, vars: Record<string, string>) => {
     return lines.join("\n");
 };
 
-export const filterKeys = (value: TObject, sort?: boolean, filter?: (v: TValue) => boolean) => {
-    const keys = Object.keys(value).filter(
+export const keys = (value: TObject, sort?: boolean, filter?: (v: TValue) => boolean) => {
+    const ks = Object.keys(value).filter(
         (k) => !k.startsWith("!") && (!filter || filter(value[k]))
     );
 
     if (!sort) {
-        return keys;
+        return ks;
     }
 
     if (value["!enum"]) {
-        return keys.sort((a, b) => {
+        return ks.sort((a, b) => {
             const v1 = value[a] as TCell;
             const v2 = value[b] as TCell;
             if (typeof v1.v === "number" && typeof v2.v === "number") {
@@ -143,7 +143,7 @@ export const filterKeys = (value: TObject, sort?: boolean, filter?: (v: TValue) 
     } else {
         const numKeys: string[] = [];
         const strKeys: string[] = [];
-        for (const k of keys) {
+        for (const k of ks) {
             const num = Number(k);
             if (!isNaN(num) && isFinite(num)) {
                 numKeys.push(k);
@@ -157,12 +157,8 @@ export const filterKeys = (value: TObject, sort?: boolean, filter?: (v: TValue) 
     }
 };
 
-export const filterValues = <T>(
-    value: TObject,
-    sort?: boolean,
-    filter?: (v: TValue) => boolean
-): T[] => {
-    return filterKeys(value, sort, filter).map((k) => value[k] as T);
+export const values = <T>(value: TObject, sort?: boolean, filter?: (v: TValue) => boolean): T[] => {
+    return keys(value, sort, filter).map((k) => value[k] as T);
 };
 
 export const toPascalCase = (str: string): string => {

@@ -1,4 +1,4 @@
-import { checkType, filterKeys, filterValues, isNullOrUndefined, toString } from "./util";
+import { checkType, isNullOrUndefined, keys, toString, values } from "./util";
 import {
     Sheet,
     TArray,
@@ -9,13 +9,14 @@ import {
     Type,
     assert,
     convertValue,
+    error,
     getRows,
 } from "./xlsx";
 
 export const convertToDefine = (sheet: Sheet) => {
     checkType(sheet.data, Type.Sheet);
 
-    const keys = filterKeys(sheet.data, true)
+    const ks = keys(sheet.data, true)
         .map((k) => Number(k))
         .filter((v) => !isNaN(v));
 
@@ -25,8 +26,8 @@ export const convertToDefine = (sheet: Sheet) => {
     config["!name"] = sheet.name;
     config["!type"] = Type.Define;
 
-    for (let i = 0; i < keys.length; i++) {
-        const idx = keys[i];
+    for (let i = 0; i < ks.length; i++) {
+        const idx = ks[i];
         assert(idx === i + 1, `Key '${idx}' is not found`);
 
         const row = checkType<TRow>(sheet.data[idx], Type.Row);
@@ -118,7 +119,7 @@ export const convertToConfig = (
     const result: TObject = {};
     result["!name"] = sheet.name;
     result["!type"] = Type.Config;
-    const rows = filterValues<TObject>(sheet.data).map((v) => checkType<TRow>(v, Type.Row));
+    const rows = values<TObject>(sheet.data).map((v) => checkType<TRow>(v, Type.Row));
     for (const row of rows) {
         assert(row[nameKey]?.v !== undefined, `Key '${nameKey}' is not found`);
         assert(row[valueKey]?.v !== undefined, `Value '${valueKey}' is not found`);
@@ -150,22 +151,54 @@ export const convertToConfig = (
             }
         }
  */
-export const convertToMap = (sheet: Sheet, ...keys: string[]) => {
+export const convertToMap = (sheet: Sheet, value: string, ...keys: string[]) => {
     checkType(sheet.data, Type.Sheet);
 
+    const queryValue = (() => {
+        if (value === "*") {
+            return (row: TRow) => row;
+        } else if (value.startsWith(".")) {
+            return (row: TRow) => row[value.slice(1)];
+        } else if (
+            (value.startsWith("{") && value.endsWith("}")) ||
+            (value.startsWith("[") && value.endsWith("]"))
+        ) {
+            const isObject = value.startsWith("{");
+            const keys = value
+                .slice(1, -1)
+                .split(",")
+                .map((k) => k.trim());
+            return (row: TRow) => {
+                const result: TObject | TArray = isObject ? {} : [];
+                for (const k of keys) {
+                    const v = row[k];
+                    if (isNullOrUndefined(v)) {
+                        error(`Key '${k}' is not found at row ${row["!index"]}`);
+                    }
+                    if (isObject) {
+                        (result as TObject)[k] = v.v;
+                    } else {
+                        (result as TArray).push(v.v);
+                    }
+                }
+                return result;
+            };
+        } else {
+            error(`Invalid value query: ${value}`);
+        }
+    })();
+
     const result: { [key: string]: TValue } = {};
-    const rows = filterValues<TObject>(sheet.data).map((v) => checkType<TRow>(v, Type.Row));
+    const rows = values<TObject>(sheet.data).map((v) => checkType<TRow>(v, Type.Row));
     for (const row of rows) {
         let t = result;
         for (let i = 0; i < keys.length; i++) {
             const key = row[keys[i]]?.v as string;
             if (isNullOrUndefined(key)) {
-                throw new Error(
-                    `Key '${keys[i]}' is not found at row ${row["!index"]} of sheet ${sheet.name}`
-                );
+                error(`Key '${keys[i]}' is not found at row ${row["!index"]}`);
             }
             if (i === keys.length - 1) {
-                t[key] = row;
+                t[key] = queryValue(row);
             } else {
                 if (!t[key]) {
                     t[key] = {};
@@ -180,7 +213,7 @@ export const convertToMap = (sheet: Sheet, ...keys: string[]) => {
 export const convertToFold = (sheet: Sheet, idxKey: string, ...foldKeys: string[]) => {
     checkType(sheet.data, Type.Sheet);
 
-    const rows = filterValues<TObject>(sheet.data).map((v) => checkType<TRow>(v, Type.Row));
+    const rows = values<TObject>(sheet.data).map((v) => checkType<TRow>(v, Type.Row));
     if (foldKeys.length === 0) {
         const result: { [key: string]: TArray } = {};
         for (const row of rows) {
@@ -198,9 +231,7 @@ export const convertToFold = (sheet: Sheet, idxKey: string, ...foldKeys: string[
         for (const row of rows) {
             const idx = row[idxKey]?.v as string;
             if (isNullOrUndefined(idx)) {
-                throw new Error(
-                    `Key '${idxKey}' is not found at row ${row["!index"]} of sheet ${sheet.name}`
-                );
+                error(`Key '${idxKey}' is not found at row ${row["!index"]}`);
             }
             let value = result[idx];
             if (!value) {
