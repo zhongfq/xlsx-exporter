@@ -1,4 +1,4 @@
-import { checkType, isNotNull, isNull, keys, toString, values } from "./util";
+import { keys, values } from "./util";
 import {
     Sheet,
     TArray,
@@ -8,12 +8,16 @@ import {
     TValue,
     Type,
     assert,
+    checkType,
     convertValue,
     error,
     getRows,
+    isNotNull,
+    isNull,
+    toString,
 } from "./xlsx";
 
-export const convertToDefine = (sheet: Sheet) => {
+export const defineSheet = (sheet: Sheet) => {
     checkType(sheet.data, Type.Sheet);
 
     const ks = keys(sheet.data)
@@ -107,7 +111,7 @@ export const convertToDefine = (sheet: Sheet) => {
     return config;
 };
 
-export const convertToConfig = (
+export const configSheet = (
     sheet: Sheet,
     nameKey = "key",
     valueKey = "value",
@@ -151,7 +155,7 @@ export const convertToConfig = (
             }
         }
  */
-export const convertToMap = (sheet: Sheet, value: string, ...keys: string[]) => {
+export const mapSheet = (sheet: Sheet, value: string, ...keys: string[]) => {
     checkType(sheet.data, Type.Sheet);
 
     const queryValue = (() => {
@@ -210,50 +214,61 @@ export const convertToMap = (sheet: Sheet, value: string, ...keys: string[]) => 
     return result;
 };
 
-export const convertToFold = (sheet: Sheet, idxKey: string, ...foldKeys: string[]) => {
+export const columnSheet = (sheet: Sheet, idxKey: string, ...foldKeys: string[]) => {
     checkType(sheet.data, Type.Sheet);
 
     const rows = values<TObject>(sheet.data).map((v) => checkType<TRow>(v, Type.Row));
-    if (foldKeys.length === 0) {
-        const result: { [key: string]: TArray } = {};
-        for (const row of rows) {
-            const idx = row[idxKey]?.v as string;
-            let arr = result[idx];
-            if (!arr) {
-                arr = [];
-                result[idx] = arr;
-            }
-            arr.push(row);
+
+    const result: { [key: string]: TObject } = {};
+    for (const row of rows) {
+        const idx = row[idxKey]?.v as string;
+        if (isNull(idx)) {
+            error(`Key '${idxKey}' is not found at row ${row["!index"]}`);
         }
-        return result;
-    } else {
-        const result: { [key: string]: TObject } = {};
-        for (const row of rows) {
-            const idx = row[idxKey]?.v as string;
-            if (isNull(idx)) {
-                error(`Key '${idxKey}' is not found at row ${row["!index"]}`);
-            }
-            let value = result[idx];
-            if (!value) {
-                result[idx] = { ...row };
-                value = result[idx];
-                delete value[sheet.fields[0].name];
-                for (const k of foldKeys) {
-                    value[k] = [];
-                }
-            }
+        let value = result[idx];
+        if (!value) {
+            result[idx] = { ...row };
+            value = result[idx];
+            delete value[sheet.fields[0].name];
             for (const k of foldKeys) {
-                const v = row[k];
-                if (isNotNull(v)) {
-                    (value[k] as TArray).push(v);
-                }
+                value[k] = [];
             }
         }
-        return result;
+        for (const k of foldKeys) {
+            const v = row[k];
+            if (isNotNull(v)) {
+                (value[k] as TArray).push(v);
+            }
+        }
     }
+    return result;
 };
 
-export const convertToType = <T>(
+export const collapseSheet = (sheet: Sheet, ...keys: string[]) => {
+    checkType(sheet.data, Type.Sheet);
+    const result: { [key: string]: TValue } = {};
+    const rows = values<TObject>(sheet.data).map((v) => checkType<TRow>(v, Type.Row));
+    for (const row of rows) {
+        let t = result;
+        for (let i = 0; i < keys.length; i++) {
+            const key = row[keys[i]]?.v as string;
+            if (isNull(key)) {
+                error(`Key '${keys[i]}' is not found at row ${row["!index"]}`);
+            }
+
+            if (!t[key]) {
+                t[key] = i === keys.length - 1 ? [] : {};
+            }
+            t = t[key] as TObject;
+            if (i === keys.length - 1) {
+                (t as unknown as TArray).push(row);
+            }
+        }
+    }
+    return result;
+};
+
+export const decltype = <T>(
     path: string,
     sheetName: string,
     typeValue: string,

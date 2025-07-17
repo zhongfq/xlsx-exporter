@@ -1,6 +1,6 @@
 import xlsx from "xlsx";
 import { type StringifyContext } from "./stringify";
-import { checkType, isNull, keys, toRef, toString, values } from "./util";
+import { keys, values } from "./util";
 
 export const RANGE_CHECKER = "xlsx.checker.range";
 export const INDEX_CHECKER = "xlsx.checker.index";
@@ -140,6 +140,68 @@ export function debugAssert(condition: boolean, msg?: string): asserts condition
         error(msg ?? "Debug assertion failed");
     }
 }
+
+export const typeOf = (value: TValue) => {
+    if (value && typeof value === "object" && value["!type"]) {
+        return value["!type"];
+    }
+    return typeof value;
+};
+
+export const checkType = <T>(value: TValue, type: Type | string) => {
+    const t = typeOf(value);
+    if (t === type) {
+        return value as T;
+    }
+    console.error(`checking value: `, value);
+    throw new Error(`Expect type '${type}', but got '${t}'`);
+};
+
+export const isNull = (value: TValue): value is null | undefined => {
+    if (value === null || value === undefined) {
+        return true;
+    }
+    if (typeof value === "object" && value["!type"] === Type.Cell) {
+        const cell = value as unknown as TCell;
+        if (cell.v === null || cell.v === undefined) {
+            return true;
+        }
+    }
+    return false;
+};
+
+export const isNotNull = (value: TValue): value is Exclude<TValue, null | undefined> => {
+    return !isNull(value);
+};
+
+/**
+ * Convert a cell to a string.
+ * @param cell - The cell to convert.
+ * @returns The string value of the cell, or empty string if the cell.v is null or undefined.
+ */
+export const toString = (cell?: TCell) => {
+    if (isNull(cell)) {
+        return "";
+    }
+    if (typeof cell.v === "string") {
+        return cell.v.trim();
+    }
+    return String(cell.v);
+};
+
+export const toRef = (col: number, row: number) => {
+    const COLUMN = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let ret = "";
+    while (true) {
+        const c = col % 26;
+        ret = COLUMN[c] + ret;
+        col = (col - c) / 26 - 1;
+        if (col < 0) {
+            break;
+        }
+    }
+    return `${ret}${row + 1}`;
+};
 
 export function registerType(typename: string, convertor: Convertor): void;
 export function registerType(typename: string, realtype: RealType, convertor: Convertor): void;

@@ -14,9 +14,10 @@ import {
     stringConvertor,
 } from "./src/convertor";
 import {
+    CollapseProcessor,
+    ColumnProcessor,
     ConfigProcessor,
     DefineProcessor,
-    FoldProcessor,
     MapProcessor,
     mergeSheet,
     registerStringifyRule,
@@ -63,7 +64,8 @@ registerChecker(SHEET_CHECKER, SheetCheckerParser);
 registerProcessor("define", DefineProcessor);
 registerProcessor("config", ConfigProcessor, 800);
 registerProcessor("map", MapProcessor, 800);
-registerProcessor("fold", FoldProcessor, 800);
+registerProcessor("collapse", CollapseProcessor, 800);
+registerProcessor("column", ColumnProcessor, 800);
 registerProcessor("stringify", StringifyProcessor, 900, true);
 registerProcessor("typedef", TypedefProcessor, 999, true);
 

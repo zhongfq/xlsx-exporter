@@ -1,10 +1,7 @@
-import { convertToConfig, convertToDefine, convertToFold, convertToMap } from "./transform";
+import { collapseSheet, columnSheet, configSheet, defineSheet, mapSheet } from "./transform";
 import { keys } from "./util";
 import { assert, copyOf, error, Processor, Sheet, TObject, Workbook, writers } from "./xlsx";
 
-//-----------------------------------------------------------------------------
-// Stringify
-//-----------------------------------------------------------------------------
 export type StringifyRule = (workbook: Workbook, writer: string) => TObject;
 const rules: Record<string, StringifyRule> = {};
 
@@ -56,11 +53,8 @@ export const StringifyProcessor: Processor = (
     }
 };
 
-//-----------------------------------------------------------------------------
-// Define
-//-----------------------------------------------------------------------------
 export const DefineProcessor: Processor = (workbook: Workbook, sheet: Sheet, action?: string) => {
-    const data = convertToDefine(sheet);
+    const data = defineSheet(sheet);
     for (const k in writers) {
         const writer = writers[k];
         writer(workbook.path, data, "define");
@@ -70,40 +64,36 @@ export const DefineProcessor: Processor = (workbook: Workbook, sheet: Sheet, act
     }
 };
 
-//-----------------------------------------------------------------------------
-// Config
-//-----------------------------------------------------------------------------
 export const ConfigProcessor: Processor = (workbook: Workbook, sheet: Sheet) => {
-    sheet.data = convertToConfig(sheet);
+    sheet.data = configSheet(sheet);
 };
 
-//-----------------------------------------------------------------------------
-// Map
-//-----------------------------------------------------------------------------
 export const MapProcessor: Processor = (
     workbook: Workbook,
     sheet: Sheet,
     value: string,
     ...keys: string[]
 ) => {
-    sheet.data = convertToMap(sheet, value, ...keys);
+    sheet.data = mapSheet(sheet, value, ...keys);
 };
 
-//-----------------------------------------------------------------------------
-// Fold
-//-----------------------------------------------------------------------------
-export const FoldProcessor: Processor = (
+export const CollapseProcessor: Processor = (
+    workbook: Workbook,
+    sheet: Sheet,
+    ...keys: string[]
+) => {
+    sheet.data = collapseSheet(sheet, ...keys);
+};
+
+export const ColumnProcessor: Processor = (
     workbook: Workbook,
     sheet: Sheet,
     idxKey: string,
     ...foldKeys: string[]
 ) => {
-    sheet.data = convertToFold(sheet, idxKey, ...foldKeys);
+    sheet.data = columnSheet(sheet, idxKey, ...foldKeys);
 };
 
-//-----------------------------------------------------------------------------
-// Type Define
-//-----------------------------------------------------------------------------
 export const TypedefProcessor: Processor = (workbook: Workbook, sheet: Sheet) => {
     for (const k in writers) {
         const writer = writers[k];
