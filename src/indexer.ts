@@ -5,7 +5,7 @@ export type RowFilter = { readonly key: string; readonly value: string | number 
 
 export class ColumnIndexer<T = TRow> {
     private _workbook: Workbook | null = null;
-    private _cache: Record<string | number, T> = {};
+    private _cache: Record<string | number, T[]> = {};
     private _filtered: Map<unknown, T[]> = new Map();
     private _rows: TRow[] = [];
 
@@ -31,7 +31,12 @@ export class ColumnIndexer<T = TRow> {
                     const cell = checkType<TCell>(row[this.field], Type.Cell);
                     if (isNotNull(cell) && (!this.filter || this.filter(row as T))) {
                         this._rows.push(row);
-                        this._cache[cell.v as string | number] = row as T;
+                        const value = cell.v as string | number;
+                        if (this._cache[value]) {
+                            this._cache[value].push(row as T);
+                        } else {
+                            this._cache[value] = [row as T];
+                        }
                     }
                 }
             }
@@ -49,13 +54,13 @@ export class ColumnIndexer<T = TRow> {
         }
     }
 
-    get(key: string | number): T | null;
+    get(key: string | number): T[];
     get(filter: readonly RowFilter[]): T[];
     get(cond: (v: T) => boolean): T[];
-    get(cond: string | number | readonly RowFilter[] | ((v: T) => boolean)): T | T[] | null {
+    get(cond: string | number | readonly RowFilter[] | ((v: T) => boolean)): T[] {
         this._init();
         if (typeof cond === "string" || typeof cond === "number") {
-            return this._cache[cond];
+            return this._cache[cond] ?? [];
         } else if (typeof cond === "function") {
             return this._rows.filter((v) => cond(v as T)) as T[];
         } else {
