@@ -1,6 +1,17 @@
 import { keys } from "./util";
 import { checkType, get, isNotNull, TCell, TRow, Type, Workbook } from "./xlsx";
 
+/** string '2' and number 2 are considered the same */
+const isSame = (a: unknown, b: unknown) => {
+    const ta = typeof a;
+    const tb = typeof b;
+    if ((ta === "string" || ta === "number") && (tb === "string" || tb === "number")) {
+        return ta === tb ? a === b : String(a) === String(b);
+    } else {
+        return a === b;
+    }
+};
+
 export type RowFilter = { readonly key: string; readonly value: string | number };
 
 export class ColumnIndexer<T = TRow> {
@@ -50,7 +61,7 @@ export class ColumnIndexer<T = TRow> {
         if (!filter) {
             return !!this._cache[key];
         } else {
-            return this.get(filter).some((v) => (v as TRow)[this.field]?.v === key);
+            return this.get(filter).some((v) => isSame((v as TRow)[this.field]?.v, key));
         }
     }
 
@@ -69,7 +80,7 @@ export class ColumnIndexer<T = TRow> {
                 result = [];
                 this._filtered.set(cond, result);
                 for (const row of this._rows) {
-                    if (cond.every((c) => row[c.key]?.v === c.value)) {
+                    if (cond.every((c) => isSame(row[c.key]?.v, c.value))) {
                         result.push(row as T);
                     }
                 }
@@ -136,7 +147,7 @@ export class RowIndexer<T = TRow> {
                 result = [];
                 this._filtered.set(cond, result);
                 for (const row of this._rows) {
-                    if (cond.every((c) => row[c.key]?.v === c.value)) {
+                    if (cond.every((c) => isSame(row[c.key]?.v, c.value))) {
                         result.push(row as T);
                     }
                 }

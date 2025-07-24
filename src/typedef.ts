@@ -137,6 +137,10 @@ export const genWorkbookTypedef = () => {
                 const optional = field.typename.endsWith("?") ? "?" : "";
                 const comment = field.comment.replaceAll(/[\r\n]+/g, " ");
                 let typename = field.typename.replaceAll("?", "");
+                if (!convertors[typename]) {
+                    const where = `file: ${path}#${sheet.name}#${field.refer}:${field.name}`;
+                    throw new Error(`convertor not found: ${typename} (${where})`);
+                }
                 typename = convertors[typename].realtype ?? typename;
                 buffer.writeLine(`/**`);
                 buffer.writeLine(

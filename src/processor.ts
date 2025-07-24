@@ -1,6 +1,28 @@
-import { collapseSheet, columnSheet, configSheet, defineSheet, mapSheet } from "./transform";
-import { keys } from "./util";
-import { assert, copyOf, error, Processor, Sheet, TObject, Workbook, writers } from "./xlsx";
+import {
+    collapseSheet,
+    columnSheet,
+    configSheet,
+    decltype,
+    defineSheet,
+    mapSheet,
+} from "./transform";
+import { keys, values } from "./util";
+import {
+    assert,
+    copyOf,
+    doing,
+    error,
+    Processor,
+    RealType,
+    registerChecker,
+    registerType,
+    Sheet,
+    TObject,
+    TRow,
+    TValue,
+    Workbook,
+    writers,
+} from "./xlsx";
 
 export type StringifyRule = (workbook: Workbook, writer: string) => TObject;
 const rules: Record<string, StringifyRule> = {};
@@ -12,9 +34,9 @@ export const registerStringifyRule = (name: string, rule: StringifyRule) => {
 
 export const mergeSheet = (workbook: Workbook, writer: string, sheetNames?: string[]) => {
     const result: TObject = {};
-    for (const k in workbook.sheets) {
-        if (!sheetNames || sheetNames.includes(k)) {
-            const sheet = workbook.sheets[k];
+    for (const sheetName in workbook.sheets) {
+        if (!sheetNames || sheetNames.includes(sheetName)) {
+            const sheet = workbook.sheets[sheetName];
             for (const k of keys(sheet.data)) {
                 const row = sheet.data[k];
                 if (result[k]) {
@@ -29,9 +51,9 @@ export const mergeSheet = (workbook: Workbook, writer: string, sheetNames?: stri
 
 export const simpleSheet = (workbook: Workbook, writer: string, sheetNames?: string[]) => {
     const result: TObject = {};
-    for (const k in workbook.sheets) {
-        if (!sheetNames || sheetNames.includes(k)) {
-            result[k] = workbook.sheets[k].data;
+    for (const sheetName in workbook.sheets) {
+        if (!sheetNames || sheetNames.includes(sheetName)) {
+            result[sheetName] = workbook.sheets[sheetName].data;
         }
     }
     return result;
@@ -72,17 +94,13 @@ export const MapProcessor: Processor = (
     workbook: Workbook,
     sheet: Sheet,
     value: string,
-    ...keys: string[]
+    ...ks: string[]
 ) => {
-    sheet.data = mapSheet(sheet, value, ...keys);
+    sheet.data = mapSheet(sheet, value, ...ks);
 };
 
-export const CollapseProcessor: Processor = (
-    workbook: Workbook,
-    sheet: Sheet,
-    ...keys: string[]
-) => {
-    sheet.data = collapseSheet(sheet, ...keys);
+export const CollapseProcessor: Processor = (workbook: Workbook, sheet: Sheet, ...ks: string[]) => {
+    sheet.data = collapseSheet(sheet, ...ks);
 };
 
 export const ColumnProcessor: Processor = (
@@ -98,5 +116,41 @@ export const TypedefProcessor: Processor = (workbook: Workbook, sheet: Sheet) =>
     for (const k in writers) {
         const writer = writers[k];
         writer(workbook.path, workbook as unknown as TObject, "typedef");
+    }
+};
+
+export const AutoRegisterProcessor: Processor = (workbook: Workbook) => {
+    for (const sheetName in workbook.sheets) {
+        const sheet = workbook.sheets[sheetName];
+        if (!sheet.processors.find((p) => p.name === "define")) {
+            continue;
+        }
+        for (const row of values<TRow>(sheet.data)) {
+            const enumName = row["enum"]?.v as string;
+            const key1 = row["key1"]?.v as string;
+            const key2 = row["key2"]?.v as string;
+            const value = row["value"]?.v as string;
+            const value_type = row["value_type"]?.v as string;
+            if (enumName && key1 && key2 && value && value_type) {
+                using _ = doing(
+                    `Registering type '${enumName}' in '${workbook.path}#${sheet.name}'`
+                );
+                const typeKeys: Record<string, TValue> = decltype(workbook.path, sheet.name, key1);
+                const typeValues: Record<string, string> = keys(typeKeys).reduce(
+                    (acc, k) => {
+                        acc[String(typeKeys[k])] = k;
+                        return acc;
+                    },
+                    {} as Record<string, string>
+                );
+
+                registerType(enumName, value_type as RealType, (str) => typeKeys[str]);
+
+                registerChecker(
+                    enumName,
+                    () => (cell) => typeValues[cell.v as string] !== undefined
+                );
+            }
+        }
     }
 };

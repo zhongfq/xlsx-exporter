@@ -14,6 +14,7 @@ import {
     stringConvertor,
 } from "./src/convertor";
 import {
+    AutoRegisterProcessor,
     CollapseProcessor,
     ColumnProcessor,
     ConfigProcessor,
@@ -63,12 +64,13 @@ registerChecker(INDEX_CHECKER, IndexCheckerParser);
 registerChecker(SHEET_CHECKER, SheetCheckerParser);
 
 registerProcessor("define", DefineProcessor);
-registerProcessor("config", ConfigProcessor, 800);
-registerProcessor("map", MapProcessor, 800);
-registerProcessor("collapse", CollapseProcessor, 800);
-registerProcessor("column", ColumnProcessor, 800);
-registerProcessor("stringify", StringifyProcessor, 900, true);
-registerProcessor("typedef", TypedefProcessor, 999, true);
+registerProcessor("config", ConfigProcessor, { priority: 800 });
+registerProcessor("map", MapProcessor, { priority: 800 });
+registerProcessor("collapse", CollapseProcessor, { priority: 800 });
+registerProcessor("column", ColumnProcessor, { priority: 800 });
+registerProcessor("stringify", StringifyProcessor, { priority: 900, required: true });
+registerProcessor("typedef", TypedefProcessor, { priority: 999, required: true });
+registerProcessor("auto-register", AutoRegisterProcessor, { required: true, stage: "after-read" });
 
 registerStringifyRule("merge", mergeSheet);
 registerStringifyRule("simple", simpleSheet);

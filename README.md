@@ -72,7 +72,7 @@ Excel 文件需要按照特定格式组织：
     <td>[0,1,2]</td>
     <td>item#item.id</td>
     <td>task#*.id</td>
-    <td>reward#*.id=$.id<br />@CheckReward</td>
+    <td>id==reward#*.id<br />@CheckReward</td>
     <td>#level.id</td>
   </tr>
   <tr>
@@ -231,16 +231,19 @@ xlsx.parse(["data/item.xlsx", "data/task.xlsx"]);
 
 ### 高级索引检查器
 
-[file]#<sheet|\*>.`<key>`[=$[.`<key>`][&<key=value>]...]]
+($([.]|[*]|[\d+])(.\<key\>)(&key=value...)==)(file)#\<sheet|\*\>.\<key\>(&key=value...)
 
-[] 表示可选项，<> 表示必选项
+() 表示可选项，<> 表示必选项
 
-- #skill.id=$.id
-- #\*.id=$.id
-- battle_skill#skill.id=$.id
-- task#main.type=$.id&#main.branch=3&key2=TASK_TYPE
+- $.id==#skill.id
+- $.id==#\*.id
+- $.id==battle_skill#skill.id
+- $[.]==battle_skill#skill.id
+- $[*].id==battle_skill#skill.id
+- $[\*][0]==battle_skill#skill.id
+- $.id&key2=TASK_TYPE==task#main.type&branch=3
 
-高级索引检查器带有键值对过滤器，以#sheet开头的，归类到列筛选，其余归类到行筛选，\$ 表示当前单元格的值，\$.id 表示取当前单元格的字段 id 的值，如果当前单元格是数组，则取数组子项的字段 id 的值。一旦有行筛选就表明并不是所有这一列都会参与检查，只有满足所有行筛选项的值才会进行下一步检查。如果有列筛选，就表明筛选到的值所在行，必须也满足所有列筛选项。
+高级索引检查器是行筛选（左边）， 文件指定（中间），列筛选（右边）组成。$ 表示当前单元格的值，“.id" 表示取当前单元格的字段 id 的值，“[.]" 取对象的算有键值，“[*]" 取数组所有项，“[0-9]" 取数组特定项。一旦有行筛选就表明并不是所有这一列都会参与检查，只有满足所有行筛选项的值才会进行下一步检查。如果有列筛选，就表明筛选到的值所在行，必须也满足所有列筛选项。
 
 ### !@checker
 

@@ -1,5 +1,6 @@
 import { ColumnIndexer, RowFilter } from "./indexer";
-import { assert, CheckerParser, error, get, TCell, TObject } from "./xlsx";
+import { keys } from "./util";
+import { CheckerParser, error, get, TCell, TObject, TValue } from "./xlsx";
 
 export const SizeCheckerParser: CheckerParser = (arg) => {
     const length = Number(arg);
@@ -44,92 +45,142 @@ export const RangeCheckerParser: CheckerParser = (arg) => {
     };
 };
 
-type ValueQuery = {
-    readonly key: string;
-    readonly filter: readonly RowFilter[];
-};
-
-const parseQuery = (sheet: string, key: string, value: string, filter: string) => {
-    const valueFilter: RowFilter[] = [];
-    const targetFilter: RowFilter[] = [];
-    for (const match of filter.matchAll(/(?:#(\w+)\.)?([^=&]+)=([^=&]+)/g)) {
-        const [_, filterSheet, filterKey, filterValue] = match;
-        if (!filterSheet) {
-            valueFilter.push({ key: filterKey, value: filterValue });
+const parseResolver = (str: string) => {
+    type Collector = (value: TValue, collector: TValue[]) => void;
+    const collectors: Collector[] = [];
+    str = str.trim().replaceAll(" ", "");
+    while (str.length) {
+        const match = str.match(/^\.\w+|\[\d+\]|\[\*\]|\[\.\]/);
+        if (match) {
+            const query = match[0];
+            str = str.slice(query.length);
+            if (query.startsWith(".")) {
+                const key = query.slice(1);
+                collectors.push((value, arr) => {
+                    if (value && typeof value === "object") {
+                        arr.push((value as TObject)[key]);
+                    } else {
+                        arr.push(null);
+                    }
+                });
+            } else if (query === "[*]") {
+                collectors.push((value, arr) => {
+                    if (Array.isArray(value)) {
+                        for (const item of value) {
+                            arr.push(item);
+                        }
+                    } else {
+                        arr.push(null);
+                    }
+                });
+            } else if (query === "[.]") {
+                collectors.push((value, arr) => {
+                    arr.push(...keys(value as TObject));
+                });
+            } else {
+                const index = Number(query.slice(1, -1));
+                collectors.push((value, arr) => {
+                    if (Array.isArray(value)) {
+                        arr.push(value[index]);
+                    } else {
+                        arr.push(null);
+                    }
+                });
+            }
         } else {
-            assert(filterSheet === sheet, `Invalid sheet: '${filterSheet}'`);
-            targetFilter.push({ key: filterKey, value: filterValue });
+            throw new Error(`Invalid query: ${str}`);
         }
     }
+
+    const arr: TValue[] = [];
+    return (value: TValue, errors: string[], walker: (value: string | number) => boolean) => {
+        arr.length = 0;
+        arr.push(value);
+        let start = 0;
+        for (const query of collectors) {
+            const length = arr.length;
+            for (let i = start; i < length; i++) {
+                query(arr[i], arr);
+            }
+            start = length;
+        }
+        for (let i = start; i < arr.length; i++) {
+            const v = arr[i];
+            if (!(typeof v === "string" || typeof v === "number") || !walker(v)) {
+                errors.push(`${v}`);
+                return false;
+            }
+        }
+        return true;
+    };
+};
+
+const parseFilter = (filter: string) => {
+    const arr: RowFilter[] = [];
+    while (filter.length) {
+        const [str, key, value] = filter.match(/(\w+)=(\w+)/) ?? [];
+        if (str) {
+            filter = filter.slice(str.length);
+            arr.push({ key, value });
+        } else {
+            throw new Error(`Invalid filter: ${filter}`);
+        }
+    }
+    return arr;
+};
+
+const parseAst = (rowKey: string, colKey: string, rowFilter: string, colFilter: string) => {
     return {
         value: {
-            key: value,
-            filter: valueFilter,
-        } as ValueQuery,
+            key: rowKey,
+            resolve: parseResolver(rowKey),
+            filter: parseFilter(rowFilter),
+        },
         target: {
-            key: key,
-            filter: targetFilter,
+            key: colKey,
+            filter: parseFilter(colFilter),
         },
     };
 };
 
-// #main.type=$&key2=MAIN&#main.condition=mainline_event
-export const IndexCheckerParser: CheckerParser = (file, sheet, key, value, filter) => {
-    const query = parseQuery(sheet, key, value, filter);
-    const indexer = new ColumnIndexer(file, sheet, query.target.key);
-
-    const check = (value: unknown) => {
-        if (query.target.filter.length) {
-            return indexer.has(value as string | number, query.target.filter);
-        } else {
-            return indexer.has(value as string | number);
-        }
-    };
+export const IndexCheckerParser: CheckerParser = (
+    file,
+    sheet,
+    rowKey,
+    rowFilter,
+    colKey,
+    colFilter
+) => {
+    const ast = parseAst(rowKey, colKey, rowFilter, colFilter);
+    const indexer = new ColumnIndexer(file, sheet, ast.target.key);
 
     return (cell, row, field, errors) => {
         if (cell.v === null || cell.v === undefined) {
             error(`Invalid value at ${cell.r} in ${field.path}#${field.sheet}`);
         }
 
-        if (query.value.filter.length > 0) {
+        if (ast.value.filter.length > 0) {
             // skip cell if not match any filter
-            for (const rowFilter of query.value.filter) {
-                const rowCell = row[rowFilter.key] as TCell | undefined;
+            for (const entry of ast.value.filter) {
+                const rowCell = row[entry.key] as TCell | undefined;
                 if (!rowCell) {
                     throw new Error(
-                        `field '${rowFilter.key}' not found in ${field.path}#${field.sheet}`
+                        `field '${entry.key}' not found in ${field.path}#${field.sheet}`
                     );
                 }
-                if (rowCell.v !== rowFilter.value) {
+                if (rowCell.v !== entry.value) {
                     return true;
                 }
             }
         }
 
-        if (typeof cell.v !== "object") {
-            return check(cell.v);
-        } else if (Array.isArray(cell.v)) {
-            /**
-             * [value, value, ...]
-             * [{idx: value}, {idx: value}, ...]
-             */
-            let found = 0;
-            for (const item of cell.v as TObject[]) {
-                if (!query.value.key) {
-                    if (check(item)) {
-                        found++;
-                    }
-                } else if (typeof item === "object" && check(item[query.value.key])) {
-                    found++;
-                }
+        return ast.value.resolve(cell.v, errors, (value) => {
+            if (ast.target.filter.length) {
+                return indexer.has(value, ast.target.filter);
+            } else {
+                return indexer.has(value);
             }
-            return found === cell.v.length;
-        } else {
-            /**
-             * {idx: value}
-             */
-            return typeof cell.v === "object" && check((cell.v as TObject)[query.value.key]);
-        }
+        });
     };
 };
 

@@ -76,7 +76,7 @@ export type Workbook = {
 };
 
 export type Convertor = (str: string) => TValue;
-type RealType = "int" | "float" | "string" | "bool" | null;
+export type RealType = "int" | "float" | "string" | "bool" | null;
 type ConvertorType = { realtype?: RealType; exec: Convertor };
 
 export type Checker = (cell: TCell, row: TObject, field: Field, errors: string[]) => boolean;
@@ -85,15 +85,21 @@ type CheckerType = {
     name: string;
     force: boolean;
     def: string;
+    args: string[];
+    refer: string;
     exec: Checker;
 };
 
 export type Processor = (workbook: Workbook, sheet: Sheet, ...args: string[]) => void;
 type ProcessorType = {
     name: string;
-    priority: number;
-    required: boolean;
+    option: ProcessorOption;
     exec: Processor;
+};
+type ProcessorOption = {
+    required: boolean;
+    priority: number;
+    stage: "after-read" | "pre-parse" | "pre-check" | "after-check";
 };
 
 export type Writer = (path: string, data: TObject, processor: string) => void;
@@ -227,20 +233,21 @@ export const registerChecker = (name: string, parser: CheckerParser) => {
  * Register a processor.
  * @param name - The name of the processor.
  * @param processor - The processor function.
- * @param priority - The priority of the processor.
- * @param required - Whether the processor is required.
+ * @param option - The options of the processor.
  */
 export const registerProcessor = (
     name: string,
     processor: Processor,
-    priority: number = 0,
-    required: boolean = false
+    option?: Partial<ProcessorOption>
 ) => {
     assert(!processors[name], `Processor '${name}' already registered`);
     processors[name] = {
         name,
-        priority,
-        required: required,
+        option: {
+            required: option?.required ?? false,
+            stage: option?.stage ?? "after-check",
+            priority: option?.priority ?? 0,
+        },
         exec: processor,
     };
 };
@@ -273,7 +280,12 @@ export function convertValue(cell: TCell | string, typename: string) {
                 return cell;
             }
             cell.s = toString(cell);
-            cell.v = convertor.exec(cell.s);
+            try {
+                cell.v = convertor.exec(cell.s);
+            } catch (e) {
+                console.error(e);
+                cell.v = null;
+            }
             if (cell.v === null || cell.v === undefined) {
                 error(`Convert value error at ${cell.r}: '${v}' => type '${typename}'`);
             }
@@ -294,6 +306,8 @@ const parseProcessor = (str: string) => {
             /**
              * @Processor
              * @Processor(arg1, arg2, ...)
+             * @processor({k1,k2}, id, key)
+             * @processor([k1,k2], id, key)
              */
             const match = s.match(/^@(\w+)(?:\((.*?)\))?$/);
             const [, name = "", args = ""] = match ?? [];
@@ -314,6 +328,8 @@ const parseProcessor = (str: string) => {
         .filter((p) => p.name);
 };
 
+const makeFilePath = (path: string) => (path.endsWith(".xlsx") ? path : path + ".xlsx");
+
 const parseChecker = (path: string, refer: string, index: number, str: string) => {
     if (str === "x" || (index === 0 && str.startsWith("!!"))) {
         return [];
@@ -321,7 +337,6 @@ const parseChecker = (path: string, refer: string, index: number, str: string) =
     if (str.trim() === "") {
         error(`No checker defined at ${refer}`);
     }
-    const makeFilePath = (path: string) => (path.endsWith(".xlsx") ? path : path + ".xlsx");
     return str
         .split(/[;\n\r]+/)
         .map((s) => s.trim())
@@ -339,70 +354,78 @@ const parseChecker = (path: string, refer: string, index: number, str: string) =
                  * @Checker(arg1, arg2, ...)
                  */
                 const [, name = "", arg = ""] = s.match(/^@(\w+)(?:\((.*?)\))?$/) ?? [];
-                const parser = checkerParsers[name];
-                if (!parser) {
-                    error(`Checker parser not found at ${refer}: '${name}'`);
-                }
                 checker = {
                     name,
                     force,
                     def: s,
-                    exec: parser(...arg.split(",").map((a) => a.trim())),
+                    refer,
+                    args: arg.split(",").map((a) => a.trim()),
+                    exec: null!,
                 };
             } else if (s.startsWith("[") && s.endsWith("]")) {
                 /**
                  * [0, 1, "a", "b", "c", ...]
                  */
-                const parser = checkerParsers[RANGE_CHECKER];
                 checker = {
                     name: RANGE_CHECKER,
                     force,
                     def: s,
-                    exec: parser(s),
+                    refer,
+                    args: [s],
+                    exec: null!,
                 };
             } else if (s.endsWith("#")) {
                 /**
                  * file#
                  * #
                  */
-                const parser = checkerParsers[SHEET_CHECKER];
                 const [, file = ""] = s.match(/^([^#]*)#$/) ?? [];
                 checker = {
                     name: SHEET_CHECKER,
                     force,
                     def: s,
-                    exec: parser(makeFilePath(file || path)),
+                    refer,
+                    args: [makeFilePath(file || path)],
+                    exec: null!,
                 };
             } else if (s.includes("#")) {
                 /**
-                 * task#main.id=$.id
+                 * $.id==task#main.id
                  * task#main.id
                  * #main.id
-                 * #main.type=$&key2=MAIN&#main.condition=mainline_event
-                 * [file]#<sheet|*>.<key>[=$[.<key>][[&<key=value>]...]]
+                 * $&key2=MAIN==#main.type&condition=mainline_event
                  */
-                const [, file = "", sheet = "", key = "", value = "", filter = ""] =
-                    s.match(/^([^#=]*)#([^.]+)\.(\w+)(?:=\$(?:\.(\w+))?(?:&(.+))?)?$/) ?? [];
-                if (!sheet || !key) {
+                const [
+                    ,
+                    rowKey = "",
+                    rowFilter = "",
+                    file = "",
+                    sheet = "",
+                    colKey = "",
+                    colFilter = "",
+                ] = s.match(/^(?:\$([^&]*)?(?:&(.+))?==)?([^#=]*)#([^.]+)\.(\w+)(?:&(.+))?$/) ?? [];
+                if (!sheet || !colKey) {
                     error(`Invalid index checker at ${refer}: '${s}'`);
                 }
-                const parser = checkerParsers[INDEX_CHECKER];
                 checker = {
                     name: INDEX_CHECKER,
                     force,
                     def: s,
-                    exec: parser(makeFilePath(file || path), sheet, key, value, filter),
+                    refer,
+                    args: [makeFilePath(file || path), sheet, rowKey, rowFilter, colKey, colFilter],
+                    exec: null!,
                 };
             } else if (s !== "x") {
                 /**
                  * value >= 0 && value <= 100
                  */
-                const parser = checkerParsers[EXPR_CHECKER];
                 checker = {
                     name: EXPR_CHECKER,
                     force,
                     def: s,
-                    exec: parser(s),
+                    refer,
+                    args: [s],
+                    exec: null!,
                 };
             }
             return checker;
@@ -424,7 +447,7 @@ export const makeCell = (v: TValue, r?: string, s?: string) => {
 
 const readHeader = (path: string, data: xlsx.WorkBook) => {
     const requiredProcessors = Object.values(processors)
-        .filter((p) => p.required)
+        .filter((p) => p.option.required)
         .reduce(
             (acc, p) => {
                 acc[p.name] = 0;
@@ -494,10 +517,6 @@ const readHeader = (path: string, data: xlsx.WorkBook) => {
                         }
                         return w;
                     });
-                assert(
-                    !!convertors[typename.replace("?", "")],
-                    `Type not found at ${toRef(c, r + 1)}: '${typename}'`
-                );
                 if (parsed[name]) {
                     error(`Duplicate field name: '${name}' at ${toRef(c, r)}`);
                 }
@@ -563,6 +582,25 @@ const readBody = (path: string, data: xlsx.WorkBook) => {
                 row[field.name] = cell;
                 if (field.index === 0) {
                     sheet.data[cell.v as string] = row;
+                }
+            }
+        }
+    }
+};
+
+const resolveChecker = () => {
+    for (const file in files) {
+        const workbook = files[file];
+        for (const sheetName in workbook.sheets) {
+            const sheet = workbook.sheets[sheetName];
+            using _ = doing(`Resolving checker in '${file}#${sheetName}'`);
+            for (const field of sheet.fields) {
+                for (const checker of field.checker) {
+                    const parser = checkerParsers[checker.name];
+                    if (!parser) {
+                        error(`Checker parser not found at ${checker.refer}: '${checker.name}'`);
+                    }
+                    checker.exec = parser(...checker.args);
                 }
             }
         }
@@ -652,29 +690,33 @@ const applyChecker = () => {
     }
 };
 
-const applyProcessor = () => {
+const applyProcessor = (stage: ProcessorOption["stage"]) => {
     type ProcessorEntry = {
         processor: ProcessorType;
         sheet: Sheet;
         args: string[];
         name: string;
     };
-    console.log("applying processor");
+    console.log(`applying processor: stage=${stage}`);
     for (const file in files) {
         const workbook = files[file];
         const arr: ProcessorEntry[] = [];
         for (const sheetName in workbook.sheets) {
             const sheet = workbook.sheets[sheetName];
             for (const { name, args } of sheet.processors) {
+                const processor = processors[name];
+                if (processor.option.stage !== stage) {
+                    continue;
+                }
                 arr.push({
-                    processor: processors[name],
+                    processor: processor,
                     sheet: sheet,
                     args: args,
                     name: name,
                 });
             }
         }
-        arr.sort((a, b) => a.processor.priority - b.processor.priority);
+        arr.sort((a, b) => a.processor.option.priority - b.processor.option.priority);
         for (const { processor, sheet, args, name } of arr) {
             using _ = doing(`Applying processor '${name}' in '${file}#${sheet.name}'`);
             try {
@@ -686,8 +728,8 @@ const applyProcessor = () => {
     }
 };
 
-export const parse = (files: string[], headerOnly: boolean = false) => {
-    for (const file of files) {
+export const parse = (fs: string[], headerOnly: boolean = false) => {
+    for (const file of fs) {
         console.log(`reading: '${file}'`);
         const data = xlsx.readFile(file, {
             dense: true,
@@ -702,10 +744,14 @@ export const parse = (files: string[], headerOnly: boolean = false) => {
             readBody(file, data);
         }
     }
+    applyProcessor("after-read");
     if (!headerOnly) {
+        applyProcessor("pre-parse");
+        resolveChecker();
         parseBody();
+        applyProcessor("pre-check");
         applyChecker();
-        applyProcessor();
+        applyProcessor("after-check");
     }
 };
 
@@ -740,8 +786,8 @@ export const copyOf = (workbook: Workbook, writer: string, headerOnly: boolean =
         if (!headerOnly) {
             resultSheet.data = copy(sheet.data);
             if (sheet.data["!type"] === Type.Sheet) {
-                for (const k of keys(sheet.data)) {
-                    const row = checkType<TRow>(sheet.data[k], Type.Row);
+                for (const key of keys(sheet.data)) {
+                    const row = checkType<TRow>(sheet.data[key], Type.Row);
                     for (const k in row) {
                         if (!k.startsWith("!") && typeof row[k] === "object") {
                             row[k]["!row"] = row;

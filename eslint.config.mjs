@@ -7,6 +7,7 @@ export default tseslint.config(eslint.configs.recommended, tseslint.configs.reco
     rules: {
         eqeqeq: "error",
         "no-unused-vars": "off",
+        "no-shadow": "warn",
         "@typescript-eslint/no-unused-vars": "off",
         "@typescript-eslint/no-explicit-any": "error",
     },

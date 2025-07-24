@@ -26,7 +26,9 @@ export const defineSheet = (sheet: Sheet) => {
 
     const rows = values<TObject>(sheet.data).map((v) => checkType<TRow>(v, Type.Row));
     for (const row of rows) {
-        const value = convertValue(row["value"], row["value_type"].v as string);
+        const typename = row["value_type"].v as string;
+        assert(!typename.endsWith("?"), `Type '${typename}' is not valid`);
+        const value = convertValue(row["value"], typename);
 
         if (!row["key1"] && row["key"]) {
             row["key1"] = row["key"];
@@ -72,7 +74,7 @@ export const defineSheet = (sheet: Sheet) => {
     for (const entry of enumOptions) {
         const enumName = entry["!enum"];
         const options: { name: string; value: unknown; desc: unknown }[] = [];
-        for (const k of Object.keys(entry).filter((k) => !k.startsWith("!"))) {
+        for (const k of Object.keys(entry).filter((v) => !v.startsWith("!"))) {
             const v = entry[k] as TCell;
             const comment = v["!comment"] ?? "";
             let name: string, desc: string | undefined;
@@ -121,7 +123,9 @@ export const configSheet = (
         assert(row[typeKey]?.v !== undefined, `Type '${typeKey}' is not found`);
         assert(row[commentKey]?.v !== undefined, `Comment '${commentKey}' is not found`);
         const key = row[nameKey].v as string;
-        const value = convertValue(row[valueKey], row[typeKey].v as string);
+        const typename = row[typeKey].v as string;
+        assert(!typename.endsWith("?"), `Type '${typename}' is not valid`);
+        const value = convertValue(row[valueKey], typename);
         value["!comment"] = row[commentKey].v as string;
         result[key] = value;
     }
@@ -159,13 +163,13 @@ export const mapSheet = (sheet: Sheet, value: string, ...keys: string[]) => {
             (value.startsWith("[") && value.endsWith("]"))
         ) {
             const isObject = value.startsWith("{");
-            const keys = value
+            const ks = value
                 .slice(1, -1)
                 .split(",")
                 .map((k) => k.trim());
             return (row: TRow) => {
                 const result: TObject | TArray = isObject ? {} : [];
-                for (const k of keys) {
+                for (const k of ks) {
                     const v = row[k];
                     if (!v) {
                         throw new Error(`Key '${k}' is not found`);
