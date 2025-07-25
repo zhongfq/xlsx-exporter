@@ -43,7 +43,7 @@ export interface GeneratedTaskBranchRow {
      */
     readonly args: unknown;
     /**
-     * 奖励 (location: L1) (checker: @ItemArrayChecker)
+     * 奖励 (location: L1) (checker: $[*].id==item#item.id)
      */
     readonly reward: unknown;
     /**
@@ -103,7 +103,7 @@ export interface GeneratedTaskBranchCol {
      */
     readonly args: (unknown)[];
     /**
-     * 奖励 (location: L1) (checker: @ItemArrayChecker)
+     * 奖励 (location: L1) (checker: $[*].id==item#item.id)
      */
     readonly reward: (unknown)[];
     /**

@@ -199,7 +199,7 @@ export interface TaskBranch {
      */
     args: { v:unknown };
     /**
-     * 奖励 (location: L1) (checker: @ItemArrayChecker) (writer: client|server)
+     * 奖励 (location: L1) (checker: $[*].id==item#item.id) (writer: client|server)
      */
     reward: { v:unknown };
     /**

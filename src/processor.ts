@@ -130,7 +130,7 @@ export const AutoRegisterProcessor: Processor = (workbook: Workbook) => {
             const key2 = row["key2"]?.v as string;
             const value = row["value"]?.v as string;
             const value_type = row["value_type"]?.v as string;
-            if (enumName && key1 && key2 && value && value_type) {
+            if (enumName && key1 && key2 && value !== undefined && value_type) {
                 using _ = doing(
                     `Registering type '${enumName}' in '${workbook.path}#${sheet.name}'`
                 );

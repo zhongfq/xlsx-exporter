@@ -1,22 +1,6 @@
 import * as xlsx from "..";
 
 {
-    let types: Record<string, xlsx.TValue> | undefined;
-    xlsx.registerType("quality", "int", (value) => {
-        types ??= xlsx.decltype("item.xlsx", "define", "QUALITY");
-        return types[value];
-    });
-}
-
-{
-    let types: Record<string, xlsx.TValue> | undefined;
-    xlsx.registerType("task_type", "int", (value) => {
-        types ??= xlsx.decltype("task.xlsx", "define", "TASK_TYPE");
-        return types[value];
-    });
-}
-
-{
     xlsx.registerType("items", (value) => {
         try {
             type ItemArray = [number, number][];
@@ -28,22 +12,6 @@ import * as xlsx from "..";
         } catch {
             return null;
         }
-    });
-}
-
-{
-    let types: Record<string, xlsx.TValue> | undefined;
-    xlsx.registerType("item_type", "int", (value) => {
-        types ??= xlsx.decltype("item.xlsx", "define", "ITEM_TYPE");
-        return types[value];
-    });
-}
-
-{
-    let types: Record<string, xlsx.TValue> | undefined;
-    xlsx.registerType("bag_type", "int", (value) => {
-        types ??= xlsx.decltype("item.xlsx", "define", "BAG_TYPE");
-        return types[value];
     });
 }
 
