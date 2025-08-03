@@ -72,4 +72,4 @@ export const ItemDefine = {
      */
     ITEM_TYPE: ItemType,
     QUALITY: QualityType,
-}
+} as const;

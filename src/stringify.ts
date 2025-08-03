@@ -465,6 +465,7 @@ export const stringifyTs = (data: TValue, option?: TsStringifyOption) => {
     }
 
     writeTsValue(data);
+    buffer.writeString(" as const;");
 
     const enumString = enumBuffer.toString();
     if (enumString) {

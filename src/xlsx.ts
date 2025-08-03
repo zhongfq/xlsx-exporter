@@ -89,9 +89,8 @@ export type Sheet = {
 
 export type Workbook = {
     path: string;
+    writer: string;
     sheets: Record<string, Sheet>;
-    /**  writer -> sheet -> field */
-    typedefs: Record<string, Record<string, Field[]>>;
 };
 
 export type Convertor = (str: string) => TValue;
@@ -125,9 +124,10 @@ export type Writer = (path: string, data: TObject, processor: string) => void;
 
 const MAX_ERRORS = 50;
 const MAX_HEADERS = 6;
-// eslint-disable-next-line prefer-const
-export let debug = true;
-export const files: Record<string, Workbook> = {};
+const DEFAULT_WRITER = "__xlsx_default_writer__";
+let currentWriter = DEFAULT_WRITER;
+/** writer -> path -> workbook */
+const workbooks: Record<string, Record<string, Workbook>> = {};
 export const checkerParsers: Record<string, CheckerParser> = {};
 export const convertors: Record<string, ConvertorType> = {};
 export const processors: Record<string, ProcessorType> = {};
@@ -495,13 +495,14 @@ const readHeader = (path: string, data: xlsx.WorkBook) => {
 
     const workbook: Workbook = {
         path: path,
+        writer: DEFAULT_WRITER,
         sheets: {},
-        typedefs: {},
     };
-    files[path] = workbook;
+
+    workbooks[DEFAULT_WRITER] ||= {};
+    workbooks[DEFAULT_WRITER][path] = workbook;
 
     const writerKeys = Object.keys(writers);
-    writerKeys.forEach((v) => (workbook.typedefs[v] = {}));
 
     let firstSheet: Sheet | null = null;
 
@@ -518,7 +519,6 @@ const readHeader = (path: string, data: xlsx.WorkBook) => {
             fields: [],
             data: {},
         };
-        writerKeys.forEach((v) => (workbook.typedefs[v][sheetName] = sheet.fields));
 
         sheet.data["!type"] = Type.Sheet;
         sheet.data["!name"] = sheetName;
@@ -598,7 +598,7 @@ const readHeader = (path: string, data: xlsx.WorkBook) => {
 };
 
 const readBody = (path: string, data: xlsx.WorkBook) => {
-    const workbook = files[path];
+    const workbook = workbooks[DEFAULT_WRITER][path];
     for (const sheetName of data.SheetNames) {
         using _ = doing(`Reading sheet '${sheetName}' in '${path}'`);
         const sheetData = data.Sheets[sheetName];
@@ -633,31 +633,33 @@ const readBody = (path: string, data: xlsx.WorkBook) => {
 };
 
 const resolveChecker = () => {
-    for (const file in files) {
-        const workbook = files[file];
-        for (const sheetName in workbook.sheets) {
-            const sheet = workbook.sheets[sheetName];
-            using _ = doing(`Resolving checker in '${file}#${sheetName}'`);
-            for (const field of sheet.fields) {
-                for (const checker of field.checker) {
-                    const parser = checkerParsers[checker.name];
-                    if (!parser) {
-                        error(`Checker parser not found at ${checker.refer}: '${checker.name}'`);
+    for (const writer in writers) {
+        currentWriter = writer;
+        for (const workbook of Object.values(workbooks[writer])) {
+            for (const sheet of Object.values(workbook.sheets)) {
+                using _ = doing(`Resolving checker in '${workbook.path}#${sheet.name}'`);
+                for (const field of sheet.fields) {
+                    for (const checker of field.checker) {
+                        const parser = checkerParsers[checker.name];
+                        if (!parser) {
+                            error(
+                                `Checker parser not found at ${checker.refer}: '${checker.name}'`
+                            );
+                        }
+                        checker.exec = parser(...checker.args);
                     }
-                    checker.exec = parser(...checker.args);
                 }
             }
         }
     }
+    currentWriter = DEFAULT_WRITER;
 };
 
 const parseBody = () => {
-    for (const file in files) {
-        const workbook = files[file];
-        console.log(`parsing: '${file}'`);
-        for (const sheetName in workbook.sheets) {
-            using _ = doing(`Parsing sheet '${sheetName}' in '${file}'`);
-            const sheet = workbook.sheets[sheetName];
+    for (const workbook of Object.values(workbooks[DEFAULT_WRITER])) {
+        console.log(`parsing: '${workbook.path}'`);
+        for (const sheet of Object.values(workbook.sheets)) {
+            using _ = doing(`Parsing sheet '${sheet.name}' in '${workbook.path}'`);
             const remap = !["string", "int", "auto"].includes(sheet.fields[0].typename);
             for (const key of keys(sheet.data)) {
                 const row = sheet.data[key] as TRow;
@@ -672,6 +674,12 @@ const parseBody = () => {
                     sheet.data[newKey] = row;
                 }
             }
+        }
+    }
+    for (const writer in writers) {
+        workbooks[writer] = {};
+        for (const workbook of Object.values(workbooks[DEFAULT_WRITER])) {
+            workbooks[writer][workbook.path] = copyOf(workbook, writer);
         }
     }
 };
@@ -713,28 +721,31 @@ const invokeChecker = (sheet: Sheet, field: Field, errors: string[]) => {
 
 const applyChecker = () => {
     console.log("applying checker");
-    const errors: string[] = [];
-    for (const file in files) {
-        const workbook = files[file];
-        for (const sheetName in workbook.sheets) {
-            const sheet = workbook.sheets[sheetName];
-            for (const field of sheet.fields) {
-                const msg = `'${field.name}' at ${field.refer} in '${file}#${sheetName}'`;
-                using _ = doing(`Checking ${msg}`);
-                try {
-                    invokeChecker(sheet, field, errors);
-                } catch (e) {
-                    error((e as Error).stack ?? String(e));
+    for (const writer in writers) {
+        currentWriter = writer;
+        const errors: string[] = [];
+        for (const workbook of Object.values(workbooks[writer])) {
+            for (const sheetName in workbook.sheets) {
+                const sheet = workbook.sheets[sheetName];
+                for (const field of sheet.fields) {
+                    const msg = `'${field.name}' at ${field.refer} in '${workbook.path}#${sheetName}'`;
+                    using _ = doing(`Checking ${msg}`);
+                    try {
+                        invokeChecker(sheet, field, errors);
+                    } catch (e) {
+                        error((e as Error).stack ?? String(e));
+                    }
                 }
             }
         }
+        if (errors.length > 0) {
+            throw new Error(errors.join("\n"));
+        }
     }
-    if (errors.length > 0) {
-        throw new Error(errors.join("\n"));
-    }
+    currentWriter = DEFAULT_WRITER;
 };
 
-const applyProcessor = (stage: ProcessorOption["stage"]) => {
+const applyProcessor = (stage: ProcessorOption["stage"], writer?: string) => {
     type ProcessorEntry = {
         processor: ProcessorType;
         sheet: Sheet;
@@ -742,34 +753,37 @@ const applyProcessor = (stage: ProcessorOption["stage"]) => {
         name: string;
     };
     console.log(`applying processor: stage=${stage}`);
-    for (const file in files) {
-        const workbook = files[file];
-        const arr: ProcessorEntry[] = [];
-        for (const sheetName in workbook.sheets) {
-            const sheet = workbook.sheets[sheetName];
-            for (const { name, args } of sheet.processors) {
-                const processor = processors[name];
-                if (processor.option.stage !== stage) {
-                    continue;
+    for (const k in writers) {
+        currentWriter = writer ?? k;
+        for (const workbook of Object.values(workbooks[currentWriter])) {
+            const arr: ProcessorEntry[] = [];
+            for (const sheetName in workbook.sheets) {
+                const sheet = workbook.sheets[sheetName];
+                for (const { name, args } of sheet.processors) {
+                    const processor = processors[name];
+                    if (processor.option.stage !== stage) {
+                        continue;
+                    }
+                    arr.push({
+                        processor: processor,
+                        sheet: sheet,
+                        args: args,
+                        name: name,
+                    });
                 }
-                arr.push({
-                    processor: processor,
-                    sheet: sheet,
-                    args: args,
-                    name: name,
-                });
             }
-        }
-        arr.sort((a, b) => a.processor.option.priority - b.processor.option.priority);
-        for (const { processor, sheet, args, name } of arr) {
-            using _ = doing(`Applying processor '${name}' in '${file}#${sheet.name}'`);
-            try {
-                processor.exec(workbook, sheet, ...args);
-            } catch (e) {
-                error((e as Error).stack ?? String(e));
+            arr.sort((a, b) => a.processor.option.priority - b.processor.option.priority);
+            for (const { processor, sheet, args, name } of arr) {
+                using _ = doing(`Applying processor '${name}' in '${workbook.path}#${sheet.name}'`);
+                try {
+                    processor.exec(workbook, sheet, ...args);
+                } catch (e) {
+                    error((e as Error).stack ?? String(e));
+                }
             }
         }
     }
+    currentWriter = DEFAULT_WRITER;
 };
 
 export const parse = (fs: string[], headerOnly: boolean = false) => {
@@ -788,13 +802,13 @@ export const parse = (fs: string[], headerOnly: boolean = false) => {
             readBody(file, data);
         }
     }
-    applyProcessor("after-read");
+    applyProcessor("after-read", DEFAULT_WRITER);
     if (!headerOnly) {
-        applyProcessor("pre-parse");
-        resolveChecker();
+        applyProcessor("pre-parse", DEFAULT_WRITER);
         parseBody();
         applyProcessor("after-parse");
         applyProcessor("pre-check");
+        resolveChecker();
         applyChecker();
         applyProcessor("after-check");
         applyProcessor("default");
@@ -802,7 +816,7 @@ export const parse = (fs: string[], headerOnly: boolean = false) => {
 };
 
 export const copyOf = (workbook: Workbook, writer: string, headerOnly: boolean = false) => {
-    const result: Workbook = { ...workbook, sheets: {} };
+    const result: Workbook = { ...workbook, writer, sheets: {} };
 
     const copy = <T extends TValue>(value: T): T => {
         if (value && typeof value === "object") {
@@ -815,9 +829,7 @@ export const copyOf = (workbook: Workbook, writer: string, headerOnly: boolean =
                 if (!k.startsWith("!")) {
                     v = copy(v);
                 }
-                if (v !== null) {
-                    obj[k] = v;
-                }
+                obj[k] = v;
             }
             return obj as T;
         } else {
@@ -852,17 +864,29 @@ export const copyOf = (workbook: Workbook, writer: string, headerOnly: boolean =
 /**
  * Get a workbook by path.
  * @param path - The path of the workbook.
+ * @param writer - The writer of the workbook.
  * @returns The workbook.
  * @throws An error if the workbook is not found.
  */
-export const getWorkbook = (path: string) => {
-    const found = Object.keys(files).filter((file) => file.endsWith(path));
+export const getWorkbook = (path: string, writer?: string) => {
+    writer ??= currentWriter;
+    const found = Object.keys(workbooks[writer]).filter((file) => file.endsWith(path));
     if (found.length === 0) {
         error(`File not found: ${path}`);
     } else if (found.length > 1) {
         error(`Multiple files found: ${path}`);
     }
-    return files[found[0]];
+    return workbooks[writer][found[0]];
+};
+
+export const getWorkbooks = (writer?: string) => {
+    writer ??= currentWriter;
+    return workbooks[writer];
+};
+
+export const write = (writer: string, path: string, data: TObject, processor: string) => {
+    assert(!!writers[writer], `Writer not found: ${writer}`);
+    writers[writer](path, data, processor);
 };
 
 export const getRows = <T = TRow>(path: string, sheet: string) => {

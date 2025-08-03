@@ -134,4 +134,4 @@ export const TaskDefine = {
             value: 7,
         },
     ],
-}
+} as const;

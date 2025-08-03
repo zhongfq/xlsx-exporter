@@ -2,8 +2,8 @@ import { StringBuffer } from "./stringify";
 import { filename, keys, toPascalCase } from "./util";
 import {
     convertors,
-    files,
     getWorkbook,
+    getWorkbooks,
     makeTypeName,
     Type,
     TypeDecl,
@@ -48,20 +48,17 @@ const writeTsType = (field: string, typealias: TypeDecl, buffer: StringBuffer) =
     }
 };
 export const genTsTypedef = (path: string, writer: string, maker?: ClassNameMaker) => {
-    const workbook = getWorkbook(path);
+    const workbook = getWorkbook(path, writer);
+    const sheets = Object.values(workbook.sheets).sort((a, b) => a.name.localeCompare(b.name));
     const buffer = new StringBuffer(4);
     const name = filename(path);
     maker = maker ?? ((className) => className);
-    const typedefs = workbook.typedefs[writer];
-    for (const sheetName of Object.keys(typedefs).sort()) {
-        const className = maker(toPascalCase(`Generated_${name}_${sheetName}_Row`));
-
-        // row
+    for (const sheet of sheets) {
+        const className = maker(toPascalCase(`Generated_${name}_${sheet.name}_Row`));
         buffer.writeLine(`// file: ${path}`);
         buffer.writeLine(`export interface ${className} {`);
         buffer.indent();
-        const fields = typedefs[sheetName].filter((v) => v.writers.includes(writer));
-        for (const field of fields) {
+        for (const field of sheet.fields) {
             const checker = field.checker.map((v) => v.def).join(";");
             const comment = field.comment.replaceAll(/[\r\n]+/g, " ");
             buffer.writeLine(`/**`);
@@ -89,16 +86,15 @@ export const genLuaTypedef = (path: string, writer: string, maker?: ClassNameMak
     if (!maker) {
         maker = (className) => `xlsx.${writer}.${className}`;
     }
+    const workbook = getWorkbook(path, writer);
+    const sheets = Object.values(workbook.sheets).sort((a, b) => a.name.localeCompare(b.name));
     const buffer = new StringBuffer(4);
-    const workbook = getWorkbook(path);
     const name = filename(path);
-    const typedefs = workbook.typedefs[writer];
-    for (const sheetName of Object.keys(typedefs).sort()) {
-        const className = maker(toPascalCase(`${name}_${sheetName}`));
+    for (const sheet of sheets) {
+        const className = maker(toPascalCase(`${name}_${sheet.name}`));
         buffer.writeLine(`---file: ${path}`);
         buffer.writeLine(`---@class ${className}`);
-        const fields = typedefs[sheetName].filter((v) => v.writers.includes(writer));
-        for (const field of fields) {
+        for (const field of sheet.fields) {
             const optional = field.typename.endsWith("?") ? "?" : "";
             let typename = field.typename.replaceAll("?", "").replaceAll("[]", "");
             typename = convertors[typename].realtype ?? typename;
@@ -125,8 +121,9 @@ export const genLuaTypedef = (path: string, writer: string, maker?: ClassNameMak
 export const genWorkbookTypedef = () => {
     const buffer = new StringBuffer(4);
     buffer.writeLine(`// AUTO GENERATED, DO NOT MODIFY!\n`);
+    const files = getWorkbooks();
     for (const path of Object.keys(files).sort()) {
-        const workbook = getWorkbook(path);
+        const workbook = files[path];
         const name = filename(path);
         for (const k of Object.keys(workbook.sheets).sort()) {
             const sheet = workbook.sheets[k];

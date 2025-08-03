@@ -9,7 +9,7 @@ import {
 import { keys, values } from "./util";
 import {
     assert,
-    copyOf,
+    convertors,
     doing,
     Processor,
     RealType,
@@ -20,7 +20,7 @@ import {
     TRow,
     TValue,
     Workbook,
-    writers,
+    write,
 } from "./xlsx";
 
 export type StringifyRule = (workbook: Workbook, writer: string) => TObject;
@@ -67,23 +67,13 @@ export const StringifyProcessor: Processor = (
     if (!rule) {
         throw new Error(`Stringify rule not found: ${ruleName}`);
     }
-    for (const k in writers) {
-        const filtered = copyOf(workbook, k);
-        const writer = writers[k];
-        writer(filtered.path, rule(filtered, k), "stringify");
-        workbook.typedefs[k] = {};
-        for (const sheetName in filtered.sheets) {
-            workbook.typedefs[k][sheetName] = filtered.sheets[sheetName].fields;
-        }
-    }
+    const data = rule(workbook, workbook.writer);
+    write(workbook.writer, workbook.path, data, "stringify");
 };
 
 export const DefineProcessor: Processor = (workbook: Workbook, sheet: Sheet, action?: string) => {
     const data = defineSheet(sheet);
-    for (const k in writers) {
-        const writer = writers[k];
-        writer(workbook.path, data, "define");
-    }
+    write(workbook.writer, workbook.path, data, "define");
     if (action !== "keep_sheet") {
         delete workbook.sheets[sheet.name];
     }
@@ -116,10 +106,7 @@ export const ColumnProcessor: Processor = (
 };
 
 export const TypedefProcessor: Processor = (workbook: Workbook, sheet: Sheet) => {
-    for (const k in writers) {
-        const writer = writers[k];
-        writer(workbook.path, workbook as unknown as TObject, "typedef");
-    }
+    write(workbook.writer, workbook.path, workbook as unknown as TObject, "typedef");
 };
 
 export const AutoRegisterProcessor: Processor = (workbook: Workbook) => {
@@ -147,12 +134,13 @@ export const AutoRegisterProcessor: Processor = (workbook: Workbook) => {
                     {} as Record<string, string>
                 );
 
-                registerType(enumName, value_type as RealType, (str) => typeKeys[str]);
-
-                registerChecker(
-                    enumName,
-                    () => (cell) => typeValues[cell.v as string] !== undefined
-                );
+                if (!convertors[enumName]) {
+                    registerType(enumName, value_type as RealType, (str) => typeKeys[str]);
+                    registerChecker(
+                        enumName,
+                        () => (cell) => typeValues[cell.v as string] !== undefined
+                    );
+                }
             }
         }
     }

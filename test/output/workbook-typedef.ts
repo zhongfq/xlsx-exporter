@@ -1,6 +1,42 @@
 // AUTO GENERATED, DO NOT MODIFY!
 
 // file: test/res/item.xlsx
+export interface ItemDefine {
+    /**
+     * ### (location: A2) (checker: x) (writer: client|server)
+     */
+    id: { v:number };
+    /**
+     * 注释 (location: B2) (checker: x) (writer: client|server)
+     */
+    comment: { v?:string };
+    /**
+     *  (location: C2) (checker: x) (writer: client|server)
+     */
+    key1: { v:string };
+    /**
+     *  (location: D2) (checker: x) (writer: client|server)
+     */
+    key2: { v?:string };
+    /**
+     * 注释 (location: E2) (checker: x) (writer: client|server)
+     */
+    value_comment: { v?:string };
+    /**
+     *  (location: F2) (checker: x) (writer: client|server)
+     */
+    value: { v:string };
+    /**
+     *  (location: G2) (checker: x) (writer: client|server)
+     */
+    value_type: { v:string };
+    /**
+     *  (location: H2) (checker: x) (writer: client|server)
+     */
+    enum: { v?:string };
+}
+
+// file: test/res/item.xlsx
 export interface ItemFollow {
     /**
      * ### (location: A1) (checker: x) (writer: client|server)
@@ -238,6 +274,46 @@ export interface TaskConf {
      * 描述 (location: E2) (checker: x) (writer: client|server)
      */
     value_comment: { v:string };
+}
+
+// file: test/res/task.xlsx
+export interface TaskDefine {
+    /**
+     * ### (location: A2) (checker: x) (writer: client|server)
+     */
+    id: { v:number };
+    /**
+     * 注释 (location: B2) (checker: x) (writer: client|server)
+     */
+    comment: { v?:string };
+    /**
+     *  (location: C2) (checker: x) (writer: client|server)
+     */
+    key1: { v:string };
+    /**
+     *  (location: D2) (checker: x) (writer: client|server)
+     */
+    key2: { v?:string };
+    /**
+     * 注释 (location: E2) (checker: x) (writer: client|server)
+     */
+    value_comment: { v?:string };
+    /**
+     *  (location: F2) (checker: $&key2=MAIN==#main.type&condition=mainline_event) (writer: client|server)
+     */
+    value: { v:string };
+    /**
+     *  (location: G2) (checker: x) (writer: client|server)
+     */
+    value_type: { v:string };
+    /**
+     *  (location: H2) (checker: x) (writer: client|server)
+     */
+    enum: { v?:string };
+    /**
+     *  (location: I2) (checker: x) (writer: client|server)
+     */
+    enum_option: { v?:boolean };
 }
 
 // file: test/res/task.xlsx
