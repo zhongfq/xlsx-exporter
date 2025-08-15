@@ -59,6 +59,9 @@ export const genTsTypedef = (path: string, writer: string, maker?: ClassNameMake
         buffer.writeLine(`export interface ${className} {`);
         buffer.indent();
         for (const field of sheet.fields) {
+            if (field.name.startsWith("--")) {
+                continue;
+            }
             const checker = field.checker.map((v) => v.def).join(";");
             const comment = field.comment.replaceAll(/[\r\n]+/g, " ");
             buffer.writeLine(`/**`);
@@ -109,6 +112,9 @@ export const genLuaTypedef = (path: string, writer: string, maker?: ClassNameMak
         buffer.writeLine(`---file: ${path}`);
         buffer.writeLine(`---@class ${className}`);
         for (const field of sheet.fields) {
+            if (field.name.startsWith("--")) {
+                continue;
+            }
             const optional = field.typename.endsWith("?") ? "?" : "";
             let typename = field.typename.replaceAll("?", "").replaceAll("[]", "");
             typename = convertors[typename].realtype ?? typename;
@@ -148,6 +154,9 @@ export const genWorkbookTypedef = () => {
             buffer.writeLine(`export interface ${className} {`);
             buffer.indent();
             for (const field of sheet.fields) {
+                if (field.name.startsWith("--")) {
+                    continue;
+                }
                 const checker = field.checker.map((v) => v.def).join(";");
                 const optional = field.typename.endsWith("?") ? "?" : "";
                 const comment = field.comment.replaceAll(/[\r\n]+/g, " ");

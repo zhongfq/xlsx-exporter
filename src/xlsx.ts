@@ -627,6 +627,10 @@ const readBody = (path: string, data: xlsx.WorkBook) => {
                 row[field.name] = cell;
                 if (field.index === 0) {
                     sheet.data[cell.v as string] = row;
+                    if (field.name.startsWith("--")) {
+                        row["!ignore"] = row["!ignore"] ?? {};
+                        row["!ignore"][field.name] = true;
+                    }
                 }
             }
         }
