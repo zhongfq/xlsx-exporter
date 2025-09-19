@@ -252,6 +252,8 @@
     "GATE_SIEGE_TIME": 1200,
     "TROOP_SIEGE_INTERVAL": 3
   },
+  "define": {
+  },
   "events": {
     "5001": {
       "desc": "等级达到10级",

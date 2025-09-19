@@ -83,6 +83,7 @@ export type Field = {
 
 export type Sheet = {
     name: string;
+    typedef: boolean;
     processors: { name: string; args: string[] }[];
     fields: Field[];
     data: TObject;
@@ -95,9 +96,6 @@ export type Workbook = {
 };
 
 export type Convertor = (str: string) => TValue;
-export type RealType = "int" | "float" | "string" | "bool" | null;
-type ConvertorType = { realtype?: RealType; exec: Convertor };
-
 export type Checker = (cell: TCell, row: TObject, field: Field, errors: string[]) => boolean;
 export type CheckerParser = (...args: string[]) => Checker;
 type CheckerType = {
@@ -118,7 +116,15 @@ type ProcessorType = {
 type ProcessorOption = {
     required: boolean;
     priority: number;
-    stage: "after-read" | "pre-parse" | "after-parse" | "pre-check" | "after-check" | "default";
+    stage:
+        | "after-read"
+        | "pre-parse"
+        | "after-parse"
+        | "pre-check"
+        | "after-check"
+        | "pre-stringify"
+        | "stringify"
+        | "after-stringify";
 };
 
 export type Writer = (path: string, data: TObject, processor: string) => void;
@@ -130,7 +136,7 @@ let currentWriter = DEFAULT_WRITER;
 /** writer -> path -> workbook */
 const workbooks: Record<string, Record<string, Workbook>> = {};
 export const checkerParsers: Record<string, CheckerParser> = {};
-export const convertors: Record<string, ConvertorType> = {};
+export const convertors: Record<string, Convertor> = {};
 export const processors: Record<string, ProcessorType> = {};
 export const writers: Record<string, Writer> = {};
 const doings: string[] = [];
@@ -219,23 +225,10 @@ export const toRef = (col: number, row: number) => {
     return `${ret}${row + 1}`;
 };
 
-export function registerType(typename: string, convertor: Convertor): void;
-export function registerType(typename: string, realtype: RealType, convertor: Convertor): void;
-export function registerType(
-    typename: string,
-    realtypeOrConvertor: RealType | Convertor,
-    convertor?: Convertor
-): void {
-    let realtype: RealType | null = null;
-    if (!convertor) {
-        convertor = realtypeOrConvertor as Convertor;
-        realtype = null;
-    } else {
-        realtype = realtypeOrConvertor as RealType;
-    }
+export function registerType(typename: string, convertor: Convertor): void {
     assert(typeof convertor === "function", `Convertor must be a function: '${typename}'`);
     assert(!convertors[typename], `Type '${typename}' already registered`);
-    convertors[typename] = { realtype, exec: convertor };
+    convertors[typename] = convertor;
 }
 
 export const registerChecker = (name: string, parser: CheckerParser) => {
@@ -259,7 +252,7 @@ export const registerProcessor = (
         name,
         option: {
             required: option?.required ?? false,
-            stage: option?.stage ?? "default",
+            stage: option?.stage ?? "stringify",
             priority: option?.priority ?? 0,
         },
         exec: processor,
@@ -361,7 +354,7 @@ export function convertValue(cell: TCell | string, typename: string) {
         if (typename.includes("[]")) {
             result = convertArray(v, rawtypename);
         } else {
-            result = convertor.exec(v) ?? null;
+            result = convertor(v) ?? null;
         }
     } catch (e) {
         console.error(e);
@@ -587,6 +580,7 @@ const readHeader = (path: string, data: xlsx.WorkBook) => {
 
         const sheet: Sheet = {
             name: sheetName,
+            typedef: true,
             processors: [],
             fields: [],
             data: {},
@@ -906,7 +900,9 @@ export const parse = async (fs: string[], headerOnly: boolean = false) => {
         resolveChecker();
         applyChecker();
         await applyProcessor("after-check");
-        await applyProcessor("default");
+        await applyProcessor("pre-stringify");
+        await applyProcessor("stringify");
+        await applyProcessor("after-stringify");
     }
 };
 
@@ -937,6 +933,7 @@ export const copyOf = (workbook: Workbook, writer: string, headerOnly: boolean =
         if (sheet.fields[0].writers.includes(writer)) {
             const resultSheet: Sheet = {
                 name: sheet.name,
+                typedef: sheet.typedef,
                 processors: structuredClone(sheet.processors),
                 fields: structuredClone(sheet.fields).filter((f) => f.writers.includes(writer)),
                 data: {},

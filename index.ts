@@ -50,7 +50,7 @@ export * from "./src/xlsx";
 
 registerType("bool", boolConvertor);
 registerType("int", intConvertor);
-registerType("auto", "int", intConvertor);
+registerType("auto", intConvertor);
 registerType("string", stringConvertor);
 registerType("float", floatConvertor);
 registerType("json", jsonConvertor);
@@ -63,13 +63,21 @@ registerChecker(RANGE_CHECKER, RangeCheckerParser);
 registerChecker(INDEX_CHECKER, IndexCheckerParser);
 registerChecker(SHEET_CHECKER, SheetCheckerParser);
 
-registerProcessor("define", DefineProcessor);
-registerProcessor("config", ConfigProcessor, { priority: 800 });
-registerProcessor("map", MapProcessor, { priority: 800 });
-registerProcessor("collapse", CollapseProcessor, { priority: 800 });
-registerProcessor("column", ColumnProcessor, { priority: 800 });
-registerProcessor("stringify", StringifyProcessor, { priority: 900, required: true });
-registerProcessor("typedef", TypedefProcessor, { priority: 999, required: true });
+registerProcessor("define", DefineProcessor, { stage: "pre-stringify" });
+registerProcessor("config", ConfigProcessor, { stage: "pre-stringify", priority: 800 });
+registerProcessor("map", MapProcessor, { stage: "pre-stringify", priority: 800 });
+registerProcessor("collapse", CollapseProcessor, { stage: "pre-stringify", priority: 800 });
+registerProcessor("column", ColumnProcessor, { stage: "pre-stringify", priority: 800 });
+registerProcessor("stringify", StringifyProcessor, {
+    stage: "stringify",
+    priority: 900,
+    required: true,
+});
+registerProcessor("typedef", TypedefProcessor, {
+    stage: "stringify",
+    priority: 999,
+    required: true,
+});
 registerProcessor("auto-register", AutoRegisterProcessor, { required: true, stage: "after-read" });
 
 registerStringifyRule("merge", mergeSheet);

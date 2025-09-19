@@ -1,6 +1,13 @@
 // AUTO GENERATED, DO NOT MODIFY!
 
+// AUTO GENERATED, DO NOT MODIFY!
 // file: test/res/task.xlsx
+
+import {
+    Items,
+    TaskType,
+} from "../define/index";
+
 export interface GeneratedTaskBranchRow {
     /**
      * ### (location: A1) (checker: x)
@@ -17,7 +24,7 @@ export interface GeneratedTaskBranchRow {
     /**
      * 任务类型 (location: E1) (checker: x)
      */
-    readonly type: number;
+    readonly type: TaskType;
     /**
      * 名字 (location: F1) (checker: x)
      */
@@ -45,7 +52,7 @@ export interface GeneratedTaskBranchRow {
     /**
      * 奖励 (location: M1) (checker: $[*].id==item#item.id)
      */
-    readonly reward: unknown;
+    readonly reward: Items;
     /**
      * 任务icon (location: N1) (checker: x)
      */
@@ -60,31 +67,6 @@ export interface GeneratedTaskBranchRow {
     readonly auto_submit?: number;
 }
 
-// file: test/res/task.xlsx
-export interface GeneratedTaskConfRow {
-    /**
-     * ### (location: A2) (checker: x)
-     */
-    readonly id: number;
-    /**
-     * 键 (location: B2) (checker: x)
-     */
-    readonly key: string;
-    /**
-     * 值 (location: C2) (checker: x)
-     */
-    readonly value: string;
-    /**
-     * 值类型 (location: D2) (checker: x)
-     */
-    readonly value_type: string;
-    /**
-     * 描述 (location: E2) (checker: x)
-     */
-    readonly value_comment: string;
-}
-
-// file: test/res/task.xlsx
 export interface GeneratedTaskEventsRow {
     /**
      * ### (location: A1) (checker: x)
@@ -105,18 +87,17 @@ export interface GeneratedTaskEventsRow {
     /**
      * 奖励 (location: H1) (checker: $[*].id==item#item.id)
      */
-    readonly reward: unknown;
+    readonly reward: Items;
     /**
      * vip奖励 (location: I1) (checker: $[*].id==item#*.id)
      */
-    readonly vip_reward: unknown;
+    readonly vip_reward: Items;
     /**
      * 任务icon (location: J1) (checker: x)
      */
     readonly icon: string;
 }
 
-// file: test/res/task.xlsx
 export interface GeneratedTaskExchangeRow {
     /**
      * ### (location: A1) (checker: x)
@@ -149,7 +130,7 @@ export interface GeneratedTaskExchangeRow {
     /**
      * 奖励 (location: J1) (checker: @ItemArrayChecker)
      */
-    readonly reward: unknown;
+    readonly reward: Items;
     /**
      * 任务icon (location: K1) (checker: x)
      */
@@ -160,7 +141,6 @@ export interface GeneratedTaskExchangeRow {
     readonly custom?: unknown;
 }
 
-// file: test/res/task.xlsx
 export interface GeneratedTaskMainRow {
     /**
      * ### (location: A1) (checker: x)
@@ -173,7 +153,7 @@ export interface GeneratedTaskMainRow {
     /**
      * 任务类型 (location: D1) (checker: #define.value&key1=TASK_TYPE)
      */
-    readonly type: number;
+    readonly type: TaskType;
     /**
      * 描述 (location: E1) (checker: x)
      */
@@ -201,7 +181,7 @@ export interface GeneratedTaskMainRow {
     /**
      * 奖励 (location: K1) (checker: @ItemArrayChecker)
      */
-    readonly reward: unknown;
+    readonly reward: Items;
     /**
      * 任务icon (location: L1) (checker: x)
      */
@@ -216,7 +196,6 @@ export interface GeneratedTaskMainRow {
     readonly auto_submit?: number;
 }
 
-// file: test/res/task.xlsx
 export interface GeneratedTaskWeeklyRow {
     /**
      * ### (location: A1) (checker: x)
@@ -237,7 +216,7 @@ export interface GeneratedTaskWeeklyRow {
     /**
      * 奖励 (location: H1) (checker: @ItemArrayChecker)
      */
-    readonly reward: unknown;
+    readonly reward: Items;
     /**
      * 任务icon (location: I1) (checker: x)
      */

@@ -12,7 +12,6 @@ import {
     convertors,
     doing,
     Processor,
-    RealType,
     registerChecker,
     registerType,
     Sheet,
@@ -78,11 +77,13 @@ export const DefineProcessor: Processor = async (
 ) => {
     const data = defineSheet(sheet);
     write(workbook.writer, workbook.path, data, "define");
-    delete workbook.sheets[sheet.name];
+    sheet.data = {};
+    sheet.typedef = false;
 };
 
 export const ConfigProcessor: Processor = async (workbook: Workbook, sheet: Sheet) => {
     sheet.data = configSheet(sheet);
+    sheet.typedef = false;
 };
 
 export const MapProcessor: Processor = async (
@@ -141,7 +142,7 @@ export const AutoRegisterProcessor: Processor = async (workbook: Workbook) => {
                 );
 
                 if (!convertors[enumName]) {
-                    registerType(enumName, value_type as RealType, (str) => typeKeys[str]);
+                    registerType(enumName, (str) => typeKeys[str]);
                     registerChecker(
                         enumName,
                         () => (cell) => typeValues[cell.v as string] !== undefined

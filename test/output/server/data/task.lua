@@ -223,6 +223,8 @@ return {
     -- 部队攻打建筑时间间隔(秒数）
     TROOP_SIEGE_INTERVAL = 3,
   },
+  define = {
+  },
   events = {
     [5001] = {
       args = {

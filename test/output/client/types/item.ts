@@ -1,6 +1,14 @@
 // AUTO GENERATED, DO NOT MODIFY!
 
+// AUTO GENERATED, DO NOT MODIFY!
 // file: test/res/item.xlsx
+
+import {
+    BagType,
+    ItemType,
+    QualityType,
+} from "../define/index";
+
 export interface GeneratedItemFollowRow {
     /**
      * ### (location: A1) (checker: x)
@@ -16,7 +24,6 @@ export interface GeneratedItemFollowRow {
     readonly value?: string;
 }
 
-// file: test/res/item.xlsx
 export interface GeneratedItemItemRow {
     /**
      * ### (location: A1) (checker: x)
@@ -37,11 +44,11 @@ export interface GeneratedItemItemRow {
     /**
      * 物品类型 config.ITEM_TYPE (location: E1) (checker: x)
      */
-    readonly item_type: number;
+    readonly item_type: ItemType;
     /**
      * 背包类型 config.BAG_TYPE (location: F1) (checker: x)
      */
-    readonly bag_id: number;
+    readonly bag_id: BagType;
     /**
      * 可否堆叠 (location: G1) (checker: x)
      */
@@ -49,7 +56,7 @@ export interface GeneratedItemItemRow {
     /**
      * 品质(颜色) (location: H1) (checker: x)
      */
-    readonly quality: number;
+    readonly quality: QualityType;
     /**
      * 参数 (location: I1) (checker: x)
      */
@@ -60,7 +67,6 @@ export interface GeneratedItemItemRow {
     readonly hide?: boolean;
 }
 
-// file: test/res/item.xlsx
 export interface GeneratedItemMapRow {
     /**
      * 注释 (location: B2) (checker: x)
@@ -80,7 +86,6 @@ export interface GeneratedItemMapRow {
     readonly name: string;
 }
 
-// file: test/res/item.xlsx
 export interface GeneratedItemMapArrRow {
     /**
      * ### (location: A2) (checker: x)
@@ -104,7 +109,6 @@ export interface GeneratedItemMapArrRow {
     readonly name: string;
 }
 
-// file: test/res/item.xlsx
 export interface GeneratedItemMapFieldRow {
     /**
      * ### (location: A2) (checker: x)
@@ -128,7 +132,6 @@ export interface GeneratedItemMapFieldRow {
     readonly name: string;
 }
 
-// file: test/res/item.xlsx
 export interface GeneratedItemMapObjRow {
     /**
      * ### (location: A2) (checker: x)

@@ -12,28 +12,47 @@ import {
     TypeTag,
 } from "./xlsx";
 
-type ClassNameMaker = (className: string) => string;
+const basicTypes = ["string", "number", "boolean", "unknown", "object"];
 
-const writeTsType = (field: string, typealias: TypeDecl, buffer: StringBuffer) => {
+export type TypeResolver = (typename: string) => { type: string; path?: string };
+
+const writeTsType = (
+    field: string,
+    typealias: TypeDecl,
+    resolver: TypeResolver,
+    namedTypes: Record<string, Set<string>>,
+    buffer: StringBuffer
+) => {
     if (typealias["!type"] === Type.TypeName) {
         const type = typealias as TypeName;
         const optional = type["!optional"] ? "?" : "";
         const array = type["!array"] ?? "";
-        let realtype = type.value;
-        realtype = convertors[realtype]?.realtype ?? realtype;
+        const typename = type.value;
         if (type["!comment"]) {
             buffer.writeLine(`/**`);
             buffer.writeLine(` * ${type["!comment"]}`);
             buffer.writeLine(` */`);
         }
-        if (realtype === "int" || realtype === "float") {
+        if (typename === "int" || typename === "float" || typename === "auto") {
             buffer.writeLine(`readonly ${field}${optional}: number${array};`);
-        } else if (realtype === "string") {
+        } else if (typename === "string") {
             buffer.writeLine(`readonly ${field}${optional}: string${array};`);
-        } else if (realtype === "bool") {
+        } else if (typename === "bool") {
             buffer.writeLine(`readonly ${field}${optional}: boolean${array};`);
-        } else {
+        } else if (
+            typename.startsWith("json") ||
+            typename.startsWith("table") ||
+            typename.startsWith("unknown") ||
+            typename.startsWith("@")
+        ) {
             buffer.writeLine(`readonly ${field}${optional}: unknown${array};`);
+        } else {
+            const ret = resolver(typename);
+            if (ret.path) {
+                namedTypes[ret.path] ||= new Set();
+                namedTypes[ret.path].add(ret.type);
+            }
+            buffer.writeLine(`readonly ${field}${optional}: ${ret.type}${array};`);
         }
     } else {
         const optional = field.endsWith("?") ? "?" : "";
@@ -42,34 +61,40 @@ const writeTsType = (field: string, typealias: TypeDecl, buffer: StringBuffer) =
         buffer.writeLine(`readonly ${field}${optional}: {`);
         buffer.indent();
         for (const k of keys(struct)) {
-            writeTsType(k, struct[k], buffer);
+            writeTsType(k, struct[k], resolver, namedTypes, buffer);
         }
         buffer.unindent();
         buffer.writeLine(`}${array};`);
     }
 };
-export const genTsTypedef = (path: string, writer: string, maker?: ClassNameMaker) => {
-    const workbook = getWorkbook(path, writer);
-    const sheets = Object.values(workbook.sheets).sort((a, b) => a.name.localeCompare(b.name));
+export const genTsTypedef = (path: string, writer: string, resolver: TypeResolver) => {
     const buffer = new StringBuffer(4);
+    buffer.writeLine(`// AUTO GENERATED, DO NOT MODIFY!`);
+    buffer.writeLine(`// file: ${path}`);
+    buffer.writeLine("");
+
+    const workbook = getWorkbook(path, writer);
+    const sheets = Object.values(workbook.sheets)
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .filter((s) => s.typedef);
+    const typeBuffer = new StringBuffer(4);
     const name = filename(path);
-    maker = maker ?? ((className) => className);
+    const namedTypes: Record<string, Set<string>> = {};
     for (const sheet of sheets) {
-        const className = maker(toPascalCase(`Generated_${name}_${sheet.name}_Row`));
-        buffer.writeLine(`// file: ${path}`);
-        buffer.writeLine(`export interface ${className} {`);
-        buffer.indent();
+        const className = toPascalCase(`Generated_${name}_${sheet.name}_Row`);
+        typeBuffer.writeLine(`export interface ${className} {`);
+        typeBuffer.indent();
         for (const field of sheet.fields) {
             if (field.ignore) {
                 continue;
             }
             const checker = field.checker.map((v) => v.def).join(";");
             const comment = field.comment.replaceAll(/[\r\n]+/g, " ");
-            buffer.writeLine(`/**`);
-            buffer.writeLine(
+            typeBuffer.writeLine(`/**`);
+            typeBuffer.writeLine(
                 ` * ${comment} (location: ${field.refer}) (checker: ${checker || "x"})`
             );
-            buffer.writeLine(` */`);
+            typeBuffer.writeLine(` */`);
             const typename = field.typename;
             writeTsType(
                 field.name,
@@ -78,27 +103,46 @@ export const genTsTypedef = (path: string, writer: string, maker?: ClassNameMake
                         "!optional": typename.includes("?"),
                         "!array": (typename.match(/[[\]]+/)?.[0] ?? undefined) as TypeTag["!array"],
                     }),
-                buffer
+                resolver,
+                namedTypes,
+                typeBuffer
             );
         }
-        buffer.unindent();
-        buffer.writeLine(`}`);
+        typeBuffer.unindent();
+        typeBuffer.writeLine(`}`);
+        typeBuffer.writeLine("");
+    }
+
+    if (Object.keys(namedTypes).length > 0) {
+        for (const entry of Object.entries(namedTypes)) {
+            const types = Array.from(entry[1])
+                .filter((t) => !basicTypes.includes(t))
+                .sort();
+            if (types.length > 0) {
+                buffer.writeLine(`import {`);
+                for (const typename of types) {
+                    buffer.writeLine(`    ${typename},`);
+                }
+                buffer.writeLine(`} from "${entry[0]}";`);
+            }
+        }
         buffer.writeLine("");
     }
+
+    buffer.writeString(typeBuffer.toString());
 
     return buffer.toString();
 };
 
-export const genLuaTypedef = (path: string, writer: string, maker?: ClassNameMaker) => {
-    if (!maker) {
-        maker = (className) => `xlsx.${writer}.${className}`;
-    }
+export const genLuaTypedef = (path: string, writer: string, resolver: TypeResolver) => {
     const workbook = getWorkbook(path, writer);
-    const sheets = Object.values(workbook.sheets).sort((a, b) => a.name.localeCompare(b.name));
+    const sheets = Object.values(workbook.sheets)
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .filter((s) => s.typedef);
     const buffer = new StringBuffer(4);
     const name = filename(path);
     for (const sheet of sheets) {
-        const className = maker(toPascalCase(`${name}_${sheet.name}`));
+        const className = `xlsx.${writer}.` + toPascalCase(`${name}_${sheet.name}`);
         buffer.writeLine(`---file: ${path}`);
         buffer.writeLine(`---@class ${className}`);
         for (const field of sheet.fields) {
@@ -108,20 +152,20 @@ export const genLuaTypedef = (path: string, writer: string, maker?: ClassNameMak
             const optional = field.typename.endsWith("?") ? "?" : "";
             const array = field.typename.match(/[[\]]+/)?.[0] ?? "";
             let typename = field.typename.replaceAll("?", "").replaceAll("[]", "");
-            typename = convertors[typename]?.realtype ?? typename;
             typename = typename.startsWith("@") ? "table" : typename;
             const comment = field.comment.replaceAll(/[\r\n]+/g, " ");
-            if (typename === "int") {
+            if (typename === "int" || typename === "auto") {
                 buffer.writeLine(`---@field ${field.name}${optional} integer${array} ${comment}`);
             } else if (typename === "float") {
                 buffer.writeLine(`---@field ${field.name}${optional} number${array} ${comment}`);
-            } else if (typename === "string") {
+            } else if (typename === "string" || typename.startsWith("@")) {
                 buffer.writeLine(`---@field ${field.name}${optional} string${array} ${comment}`);
             } else if (typename === "bool") {
                 buffer.writeLine(`---@field ${field.name}${optional} boolean${array} ${comment}`);
             } else {
+                const ret = resolver(typename);
                 buffer.writeLine(
-                    `---@field ${field.name}${optional} ${maker(typename)}${array} ${comment}`
+                    `---@field ${field.name}${optional} ${ret.type}${array} ${comment}`
                 );
             }
         }
@@ -130,10 +174,13 @@ export const genLuaTypedef = (path: string, writer: string, maker?: ClassNameMak
     return buffer.toString();
 };
 
-export const genWorkbookTypedef = () => {
+export const genWorkbookTypedef = (resolver: TypeResolver) => {
     const buffer = new StringBuffer(4);
     buffer.writeLine(`// AUTO GENERATED, DO NOT MODIFY!\n`);
+
+    const typeBuffer = new StringBuffer(4);
     const files = getWorkbooks();
+    const namedTypes: Record<string, Set<string>> = {};
     for (const path of Object.keys(files).sort()) {
         const workbook = files[path];
         const name = filename(path);
@@ -142,9 +189,9 @@ export const genWorkbookTypedef = () => {
             const className = toPascalCase(`${name}_${sheet.name}`);
 
             // row
-            buffer.writeLine(`// file: ${path}`);
-            buffer.writeLine(`export interface ${className} {`);
-            buffer.indent();
+            typeBuffer.writeLine(`// file: ${path}`);
+            typeBuffer.writeLine(`export interface ${className} {`);
+            typeBuffer.indent();
             for (const field of sheet.fields) {
                 if (field.name.startsWith("--")) {
                     continue;
@@ -160,27 +207,56 @@ export const genWorkbookTypedef = () => {
                     const where = `file: ${path}#${sheet.name}#${field.refer}:${field.name}`;
                     throw new Error(`convertor not found: ${typename} (${where})`);
                 }
-                typename = convertors[typename]?.realtype ?? typename;
-                buffer.writeLine(`/**`);
-                buffer.writeLine(
+                typeBuffer.writeLine(`/**`);
+                typeBuffer.writeLine(
                     ` * ${comment} (location: ${field.refer}) (checker: ${checker || "x"}) ` +
                         `(writer: ${field.writers.join("|")})`
                 );
-                buffer.writeLine(` */`);
-                if (typename === "int" || typename === "float") {
-                    buffer.writeLine(`${field.name}: { v${optional}:number${array} };`);
+                typeBuffer.writeLine(` */`);
+                if (typename === "int" || typename === "float" || typename === "auto") {
+                    typeBuffer.writeLine(`${field.name}: { v${optional}: number${array} };`);
                 } else if (typename === "string") {
-                    buffer.writeLine(`${field.name}: { v${optional}:string${array} };`);
+                    typeBuffer.writeLine(`${field.name}: { v${optional}: string${array} };`);
                 } else if (typename === "bool") {
-                    buffer.writeLine(`${field.name}: { v${optional}:boolean${array} };`);
+                    typeBuffer.writeLine(`${field.name}: { v${optional}: boolean${array} };`);
+                } else if (
+                    typename.startsWith("json") ||
+                    typename.startsWith("table") ||
+                    typename.startsWith("unknown") ||
+                    typename.startsWith("@")
+                ) {
+                    typeBuffer.writeLine(`${field.name}: { v${optional}: unknown${array} };`);
                 } else {
-                    buffer.writeLine(`${field.name}: { v${optional}:unknown${array} };`);
+                    const ret = resolver(typename);
+                    if (ret.path) {
+                        namedTypes[ret.path] ||= new Set();
+                        namedTypes[ret.path].add(ret.type);
+                    }
+                    typeBuffer.writeLine(`${field.name}: { v${optional}: ${ret.type}${array} };`);
                 }
             }
-            buffer.unindent();
-            buffer.writeLine(`}`);
-            buffer.writeLine("");
+            typeBuffer.unindent();
+            typeBuffer.writeLine(`}`);
+            typeBuffer.writeLine("");
         }
     }
+
+    if (Object.keys(namedTypes).length > 0) {
+        for (const entry of Object.entries(namedTypes)) {
+            const types = Array.from(entry[1])
+                .filter((t) => !basicTypes.includes(t))
+                .sort();
+            if (types.length > 0) {
+                buffer.writeLine(`import {`);
+                for (const typename of types) {
+                    buffer.writeLine(`    ${typename},`);
+                }
+                buffer.writeLine(`} from "${entry[0]}";`);
+            }
+        }
+        buffer.writeLine("");
+    }
+
+    buffer.writeLine(typeBuffer.toString());
     return buffer.toString();
 };
