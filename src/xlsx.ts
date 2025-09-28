@@ -58,23 +58,13 @@ export type TObject = { [k: string | number]: TValue } & Tag;
 export type TArray = TValue[] & Tag;
 export type TRow = { [k: string]: TCell } & Tag;
 
-export type TypeTag = {
-    "!type": Type.TypeName | Type.TypeStruct;
-    "!array"?: "[]" | "[][]" | "[][][]" | "[][][][]";
-    "!comment"?: string;
-    "!optional"?: boolean;
-};
-export type TypeName = { value: string } & TypeTag;
-export type TypeStruct = { [k: string]: TypeDecl } & TypeTag;
-export type TypeDecl = TypeStruct | TypeName;
-
 export type Field = {
     sheet: string;
     path: string;
     index: number;
     name: string;
     typename: string;
-    typedecl?: TypeDecl;
+    realtype?: string;
     writers: string[];
     checker: CheckerType[];
     comment: string;
@@ -228,12 +218,16 @@ export const toRef = (col: number, row: number) => {
 
 export function registerType(typename: string, convertor: Convertor): void {
     assert(typeof convertor === "function", `Convertor must be a function: '${typename}'`);
-    assert(!convertors[typename], `Type '${typename}' already registered`);
+    if (convertors[typename]) {
+        console.warn(`Overwrite previous registered convertor '${typename}'`);
+    }
     convertors[typename] = convertor;
 }
 
 export const registerChecker = (name: string, parser: CheckerParser) => {
-    assert(!checkerParsers[name], `Checker parser '${name}' already registered`);
+    if (checkerParsers[name]) {
+        console.warn(`Overwrite previous registered checker parser '${name}'`);
+    }
     checkerParsers[name] = parser;
 };
 
@@ -248,7 +242,9 @@ export const registerProcessor = (
     processor: Processor,
     option?: Partial<ProcessorOption>
 ) => {
-    assert(!processors[name], `Processor '${name}' already registered`);
+    if (processors[name]) {
+        console.warn(`Overwrite previous registered processor '${name}'`);
+    }
     processors[name] = {
         name,
         option: {
@@ -261,7 +257,9 @@ export const registerProcessor = (
 };
 
 export const registerWriter = (name: string, writer: Writer) => {
-    assert(!writers[name], `Writer '${name}' already registered`);
+    if (writers[name]) {
+        console.warn(`Overwrite previous registered writer '${name}'`);
+    }
     writers[name] = writer;
 };
 
@@ -526,26 +524,6 @@ const readCell = (sheetData: xlsx.WorkSheet, r: number, c: number) => {
 
 export const makeCell = (v: TValue, t?: string, r?: string, s?: string) => {
     return { "!type": Type.Cell, v: v ?? null, t, r, s } as TCell;
-};
-
-export const makeTypeName = (name: string, tag?: Partial<TypeTag>) => {
-    assert(!name.includes("?") && !name.includes("[]"), `Invalid type name: '${name}'`);
-    return {
-        ...tag,
-        "!type": Type.TypeName,
-        value: name.replaceAll("[]", "").replaceAll("?", ""),
-    } as TypeName;
-};
-
-export const makeTypeStruct = (
-    struct: { [k: string]: TypeDecl | TypeName },
-    tag?: Partial<TypeTag>
-) => {
-    return {
-        ...struct,
-        ...tag,
-        "!type": Type.TypeStruct,
-    } as TypeStruct;
 };
 
 const readHeader = (path: string, data: xlsx.WorkBook) => {

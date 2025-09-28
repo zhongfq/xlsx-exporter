@@ -1,72 +1,11 @@
 import { StringBuffer } from "./stringify";
-import { filename, keys, toPascalCase } from "./util";
-import {
-    convertors,
-    getWorkbook,
-    getWorkbooks,
-    makeTypeName,
-    Type,
-    TypeDecl,
-    TypeName,
-    TypeStruct,
-    TypeTag,
-} from "./xlsx";
+import { filename, toPascalCase } from "./util";
+import { convertors, getWorkbook, getWorkbooks } from "./xlsx";
 
 const basicTypes = ["string", "number", "boolean", "unknown", "object"];
 
 export type TypeResolver = (typename: string) => { type: string; path?: string };
 
-const writeTsType = (
-    field: string,
-    typealias: TypeDecl,
-    resolver: TypeResolver,
-    namedTypes: Record<string, Set<string>>,
-    buffer: StringBuffer
-) => {
-    if (typealias["!type"] === Type.TypeName) {
-        const type = typealias as TypeName;
-        const optional = type["!optional"] ? "?" : "";
-        const array = type["!array"] ?? "";
-        const typename = type.value;
-        if (type["!comment"]) {
-            buffer.writeLine(`/**`);
-            buffer.writeLine(` * ${type["!comment"]}`);
-            buffer.writeLine(` */`);
-        }
-        if (typename === "int" || typename === "float" || typename === "auto") {
-            buffer.writeLine(`readonly ${field}${optional}: number${array};`);
-        } else if (typename === "string") {
-            buffer.writeLine(`readonly ${field}${optional}: string${array};`);
-        } else if (typename === "bool") {
-            buffer.writeLine(`readonly ${field}${optional}: boolean${array};`);
-        } else if (
-            typename.startsWith("json") ||
-            typename.startsWith("table") ||
-            typename.startsWith("unknown") ||
-            typename.startsWith("@")
-        ) {
-            buffer.writeLine(`readonly ${field}${optional}: unknown${array};`);
-        } else {
-            const ret = resolver(typename);
-            if (ret.path) {
-                namedTypes[ret.path] ||= new Set();
-                namedTypes[ret.path].add(ret.type);
-            }
-            buffer.writeLine(`readonly ${field}${optional}: ${ret.type}${array};`);
-        }
-    } else {
-        const optional = field.endsWith("?") ? "?" : "";
-        const array = field.endsWith("[]") ? "[]" : "";
-        const struct = typealias as TypeStruct;
-        buffer.writeLine(`readonly ${field}${optional}: {`);
-        buffer.indent();
-        for (const k of keys(struct)) {
-            writeTsType(k, struct[k], resolver, namedTypes, buffer);
-        }
-        buffer.unindent();
-        buffer.writeLine(`}${array};`);
-    }
-};
 export const genTsTypedef = (path: string, writer: string, resolver: TypeResolver) => {
     const buffer = new StringBuffer(4);
     buffer.writeLine(`// AUTO GENERATED, DO NOT MODIFY!`);
@@ -95,18 +34,31 @@ export const genTsTypedef = (path: string, writer: string, resolver: TypeResolve
                 ` * ${comment} (location: ${field.refer}) (checker: ${checker || "x"})`
             );
             typeBuffer.writeLine(` */`);
-            const typename = field.typename;
-            writeTsType(
-                field.name,
-                field.typedecl ??
-                    makeTypeName(typename.replaceAll("?", "").replaceAll("[]", ""), {
-                        "!optional": typename.includes("?"),
-                        "!array": (typename.match(/[[\]]+/)?.[0] ?? undefined) as TypeTag["!array"],
-                    }),
-                resolver,
-                namedTypes,
-                typeBuffer
-            );
+            let typename = field.realtype ?? field.typename;
+            const optional = typename.endsWith("?") ? "?" : "";
+            const array = typename.match(/[[\]]+/)?.[0] ?? "";
+            typename = typename.replaceAll("?", "").replaceAll("[]", "");
+            if (typename === "int" || typename === "float" || typename === "auto") {
+                typeBuffer.writeLine(`readonly ${field.name}${optional}: number${array};`);
+            } else if (typename === "string") {
+                typeBuffer.writeLine(`readonly ${field.name}${optional}: string${array};`);
+            } else if (typename === "bool") {
+                typeBuffer.writeLine(`readonly ${field.name}${optional}: boolean${array};`);
+            } else if (
+                typename.startsWith("json") ||
+                typename.startsWith("table") ||
+                typename.startsWith("unknown") ||
+                typename.startsWith("@")
+            ) {
+                typeBuffer.writeLine(`readonly ${field.name}${optional}: unknown${array};`);
+            } else {
+                const ret = resolver(typename);
+                if (ret.path) {
+                    namedTypes[ret.path] ||= new Set();
+                    namedTypes[ret.path].add(ret.type);
+                }
+                typeBuffer.writeLine(`readonly ${field.name}${optional}: ${ret.type}${array};`);
+            }
         }
         typeBuffer.unindent();
         typeBuffer.writeLine(`}`);
