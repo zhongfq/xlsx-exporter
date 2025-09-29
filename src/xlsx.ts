@@ -202,7 +202,7 @@ export const toString = (cell?: TCell) => {
     return String(cell.v);
 };
 
-export const toRef = (col: number, row: number) => {
+const toRef = (col: number, row: number) => {
     const COLUMN = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     let ret = "";
     while (true) {
@@ -885,7 +885,7 @@ export const parse = async (fs: string[], headerOnly: boolean = false) => {
     }
 };
 
-export const copyOf = (workbook: Workbook, writer: string, headerOnly: boolean = false) => {
+const copyOf = (workbook: Workbook, writer: string, headerOnly: boolean = false) => {
     const result: Workbook = { ...workbook, writer, sheets: {} };
 
     const copy = <T extends TValue>(value: T): T => {
@@ -964,17 +964,4 @@ export const getWorkbooks = (writer?: string) => {
 export const write = (writer: string, path: string, data: TObject, processor: string) => {
     assert(!!writers[writer], `Writer not found: ${writer}`);
     writers[writer](path, data, processor);
-};
-
-export const getRows = <T = TRow>(path: string, sheet: string) => {
-    const workbook = getWorkbook(path);
-    const sheetData = workbook.sheets[sheet]?.data;
-    if (!sheetData) {
-        throw new Error(`Sheet not found: ${path}#${sheet}`);
-    }
-    return values<TObject>(sheetData).map((v) => checkType<T>(v, Type.Row));
-};
-
-export const getColumn = (path: string, sheet: string, field: string) => {
-    return getRows(path, sheet).map((row) => checkType<TCell>(row[field], Type.Cell));
 };

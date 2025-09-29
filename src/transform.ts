@@ -1,3 +1,4 @@
+import { RowIndexer } from "./indexer";
 import { values } from "./util";
 import {
     Sheet,
@@ -10,7 +11,6 @@ import {
     assert,
     checkType,
     convertValue,
-    getRows,
     isNotNull,
     toString,
 } from "./xlsx";
@@ -278,7 +278,8 @@ export const decltype = <T>(
     fieldKey: string = "key2"
 ) => {
     const types: Record<string, T> = {};
-    for (const row of getRows(path, sheetName)) {
+    const indexer = new RowIndexer<TRow>(path, sheetName);
+    for (const row of indexer.rows) {
         const key1 = row[typeKey];
         const key2 = row[fieldKey];
         const value = row["value"];

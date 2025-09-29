@@ -44,7 +44,8 @@ export class ColumnIndexer<T = TRow> {
                 for (const key of keys(sheet.data)) {
                     const row = checkType<TRow>(sheet.data[key], Type.Row);
                     const cell = checkType<TCell>(row[this.field], Type.Cell);
-                    if (isNotNull(cell) && (!this.filter || this.filter(row as T))) {
+                    const deprecated = row["$deprecated"]?.v === true;
+                    if (isNotNull(cell) && !deprecated && (!this.filter || this.filter(row as T))) {
                         this._rows.push(row);
                         const value = cell.v as string | number;
                         if (this._cache[value]) {
@@ -62,6 +63,11 @@ export class ColumnIndexer<T = TRow> {
         if (!hasField) {
             throw new Error(`Field not found: ${this.field}`);
         }
+    }
+
+    get rows(): ReadonlyArray<T> {
+        this._init();
+        return this._rows as T[];
     }
 
     has(key: string | number): boolean;
@@ -123,7 +129,8 @@ export class RowIndexer<T = TRow> {
                 hasSheet = true;
                 for (const key of keys(sheet.data)) {
                     const row = checkType<TRow>(sheet.data[key], Type.Row);
-                    if (!this.filter || this.filter(row as T)) {
+                    const deprecated = row["$deprecated"]?.v === true;
+                    if (!deprecated && (!this.filter || this.filter(row as T))) {
                         this._cache[key] = row as T;
                         this._rows.push(row);
                     }
@@ -133,6 +140,11 @@ export class RowIndexer<T = TRow> {
         if (!hasSheet) {
             throw new Error(`Sheet not found: ${this.sheetName}`);
         }
+    }
+
+    get rows(): ReadonlyArray<T> {
+        this._init();
+        return this._rows as T[];
     }
 
     has(key: string | number): boolean;
