@@ -17,7 +17,7 @@ import {
 //  - @post_stringify
 //  - @workbook-indexer
 //  - @validate-json
-export interface ItemDefine {
+export interface ItemDefineRow {
     /**
      * ### (location: A2) (checker: x) (writer: client|server)
      */
@@ -53,7 +53,7 @@ export interface ItemDefine {
 }
 
 // file: test/res/item.xlsx
-export interface ItemFollow {
+export interface ItemFollowRow {
     /**
      * ### (location: A1) (checker: x) (writer: client|server)
      */
@@ -69,7 +69,7 @@ export interface ItemFollow {
 }
 
 // file: test/res/item.xlsx
-export interface ItemItem {
+export interface ItemItemRow {
     /**
      * ### (location: A1) (checker: x) (writer: client|server)
      */
@@ -115,7 +115,7 @@ export interface ItemItem {
 // file: test/res/item.xlsx
 // processors:
 //  - @map(*, kind, level)
-export interface ItemMap {
+export interface ItemMapRow {
     /**
      * 注释 (location: B2) (checker: x) (writer: client|server)
      */
@@ -137,7 +137,7 @@ export interface ItemMap {
 // file: test/res/item.xlsx
 // processors:
 //  - @map([name,level], kind, level)
-export interface ItemMapArr {
+export interface ItemMapArrRow {
     /**
      * ### (location: A2) (checker: x) (writer: client|server)
      */
@@ -163,7 +163,7 @@ export interface ItemMapArr {
 // file: test/res/item.xlsx
 // processors:
 //  - @map(.comment, kind, level)
-export interface ItemMapField {
+export interface ItemMapFieldRow {
     /**
      * ### (location: A2) (checker: x) (writer: client|server)
      */
@@ -189,7 +189,7 @@ export interface ItemMapField {
 // file: test/res/item.xlsx
 // processors:
 //  - @map({name,level,kind}, kind, level)
-export interface ItemMapObj {
+export interface ItemMapObjRow {
     /**
      * ### (location: A2) (checker: x) (writer: client|server)
      */
@@ -213,7 +213,7 @@ export interface ItemMapObj {
 }
 
 // file: test/res/task.xlsx
-export interface TaskBranch {
+export interface TaskBranchRow {
     /**
      * ### (location: A1) (checker: x) (writer: client|server)
      */
@@ -279,7 +279,7 @@ export interface TaskBranch {
 // file: test/res/task.xlsx
 // processors:
 //  - @config
-export interface TaskConf {
+export interface TaskConfRow {
     /**
      * ### (location: A2) (checker: x) (writer: client|server)
      */
@@ -311,7 +311,7 @@ export interface TaskConf {
 //  - @post_stringify
 //  - @workbook-indexer
 //  - @validate-json
-export interface TaskDefine {
+export interface TaskDefineRow {
     /**
      * ### (location: A2) (checker: x) (writer: client|server)
      */
@@ -351,7 +351,7 @@ export interface TaskDefine {
 }
 
 // file: test/res/task.xlsx
-export interface TaskEvents {
+export interface TaskEventsRow {
     /**
      * ### (location: A1) (checker: x) (writer: client|server)
      */
@@ -391,7 +391,7 @@ export interface TaskEvents {
 }
 
 // file: test/res/task.xlsx
-export interface TaskExchange {
+export interface TaskExchangeRow {
     /**
      * ### (location: A1) (checker: x) (writer: client|server)
      */
@@ -439,7 +439,7 @@ export interface TaskExchange {
 }
 
 // file: test/res/task.xlsx
-export interface TaskMain {
+export interface TaskMainRow {
     /**
      * ### (location: A1) (checker: x) (writer: client|server)
      */
@@ -495,7 +495,7 @@ export interface TaskMain {
 }
 
 // file: test/res/task.xlsx
-export interface TaskWeekly {
+export interface TaskWeeklyRow {
     /**
      * ### (location: A1) (checker: x) (writer: client|server)
      */

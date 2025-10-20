@@ -991,8 +991,3 @@ export const getWorkbooks = (writer?: string) => {
     writer ??= currentWriter;
     return workbooks[writer];
 };
-
-export const write = (writer: string, path: string, data: TObject, processor: string) => {
-    assert(!!writers[writer], `Writer not found: ${writer}`);
-    writers[writer](path, data, processor);
-};

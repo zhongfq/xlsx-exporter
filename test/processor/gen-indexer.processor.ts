@@ -18,7 +18,7 @@ const genDesignIndexer = () => {
         const colIndexerBuffer = new xlsx.StringBuffer(4);
         for (const k of Object.keys(workbook.sheets).sort()) {
             const sheet = workbook.sheets[k];
-            const className = xlsx.toPascalCase(`${name}_${sheet.name}`);
+            const className = xlsx.toPascalCase(`${name}_${sheet.name}_row`);
             types.add(className);
             sheets.push(sheet.name);
             sheetClasses.push(className);

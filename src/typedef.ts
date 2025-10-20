@@ -132,7 +132,7 @@ export const genWorkbookTypedef = (resolver: TypeResolver) => {
         const name = filename(path);
         for (const k of Object.keys(workbook.sheets).sort()) {
             const sheet = workbook.sheets[k];
-            const className = toPascalCase(`${name}_${sheet.name}`);
+            const className = toPascalCase(`${name}_${sheet.name}_Row`);
 
             // row
             typeBuffer.writeLine(`// file: ${path}`);

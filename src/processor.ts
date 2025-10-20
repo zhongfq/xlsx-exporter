@@ -19,7 +19,7 @@ import {
     TRow,
     TValue,
     Workbook,
-    write,
+    writers,
 } from "./xlsx";
 
 export type StringifyRule = (workbook: Workbook, writer: string) => TObject;
@@ -28,6 +28,11 @@ const rules: Record<string, StringifyRule> = {};
 export const registerStringifyRule = (name: string, rule: StringifyRule) => {
     assert(!rules[name], `Stringify rule '${name}' already registered`);
     rules[name] = rule;
+};
+
+const write = (writer: string, path: string, data: TObject, processor: string) => {
+    assert(!!writers[writer], `Writer not found: ${writer}`);
+    writers[writer](path, data, processor);
 };
 
 export const mergeSheet = (workbook: Workbook, writer: string, sheetNames?: string[]) => {
