@@ -17,8 +17,6 @@ export const enum Type {
     Map = "xlsx.type.map",
     Fold = "xlsx.type.fold",
     Sheet = "xlsx.type.sheet",
-    TypeName = "xlsx.type.type_name",
-    TypeStruct = "xlsx.type.type_struct",
 }
 
 export type Tag = {
@@ -32,12 +30,6 @@ export type Tag = {
     ["!enum"]?: string;
     /** comment */
     ["!comment"]?: string;
-    /** writer */
-    ["!writer"]?: string[];
-    /** field */
-    ["!field"]?: Field;
-    /** row data */
-    ["!row"]?: TRow;
     /** ignore fields when stringify */
     ["!ignore"]?: { [k: string]: boolean };
 };
@@ -93,7 +85,7 @@ export type CheckerParser = (...args: string[]) => Checker;
 type CheckerType = {
     name: string;
     force: boolean;
-    def: string;
+    source: string;
     args: string[];
     refer: string;
     exec: Checker;
@@ -187,6 +179,11 @@ export const isNull = (value: TValue): value is null | undefined => {
 
 export const isNotNull = (value: TValue): value is Exclude<TValue, null | undefined> => {
     return !isNull(value);
+};
+
+export const ignoreField = (value: object & Tag, field: string, ignored: boolean) => {
+    value["!ignore"] ??= {};
+    value["!ignore"][field] = ignored;
 };
 
 /**
@@ -454,7 +451,7 @@ export const parseChecker = (
                 checker = {
                     name,
                     force,
-                    def: s,
+                    source: s,
                     refer,
                     args: arg.split(",").map((a) => a.trim()),
                     exec: null!,
@@ -466,7 +463,7 @@ export const parseChecker = (
                 checker = {
                     name: RANGE_CHECKER,
                     force,
-                    def: s,
+                    source: s,
                     refer,
                     args: [s],
                     exec: null!,
@@ -481,7 +478,7 @@ export const parseChecker = (
                 checker = {
                     name: SHEET_CHECKER,
                     force,
-                    def: s,
+                    source: s,
                     refer,
                     args: [rowFile, rowSheet, rowKey, rowFilter, makeFilePath(colFile || rowFile)],
                     exec: null!,
@@ -508,7 +505,7 @@ export const parseChecker = (
                 checker = {
                     name: INDEX_CHECKER,
                     force,
-                    def: s,
+                    source: s,
                     refer,
                     args: [
                         rowFile,
@@ -529,7 +526,7 @@ export const parseChecker = (
                 checker = {
                     name: EXPR_CHECKER,
                     force,
-                    def: s,
+                    source: s,
                     refer,
                     args: [s],
                     exec: null!,
@@ -674,36 +671,37 @@ const readBody = (path: string, data: xlsx.WorkBook) => {
         const start = toString(readCell(sheetData, 0, 0)).startsWith("@")
             ? MAX_HEADERS
             : MAX_HEADERS - 1;
-        for (let r = start; r < sheetData.length; r++) {
+        let maxRows = sheetData.length;
+        for (let r = sheetData.length - 1; r >= start; r--) {
+            const cell: TCell | undefined = sheetData[r]?.[0];
+            if (!cell || cell.v === "") {
+                maxRows = r;
+            } else {
+                break;
+            }
+        }
+        for (let r = start; r < maxRows; r++) {
             const row: TRow = {};
             row["!type"] = Type.Row;
-            loop: for (const field of sheet.fields) {
+            for (const field of sheet.fields) {
                 const cell: TCell = readCell(sheetData, r, field.index);
-                if (cell.v === "" && field.index === 0) {
-                    break loop;
-                }
                 if (field.typename === "auto") {
                     if (cell.v !== "-") {
                         error(`Expected '-' at ${toRef(0, r)}, but got '${cell.v}'`);
                     }
                     cell.v = r - start + 1;
                 }
-                cell["!field"] = field;
-                cell["!row"] = row;
-                cell["!writer"] = field.writers;
                 row[field.name] = cell;
                 if (field.index === 0) {
                     sheet.data[cell.v as string] = row;
                     if (field.name.startsWith("--")) {
-                        row["!ignore"] ??= {};
-                        row["!ignore"][field.name] = true;
+                        ignoreField(row, field.name, true);
                         field.ignore = true;
                     }
                 } else if (field.typename.startsWith("@")) {
                     const typename = field.typename.slice(1);
-                    row["!ignore"] ??= {};
-                    row["!ignore"][typename] = true;
                     const refField = sheet.fields.find((f) => f.name === typename);
+                    ignoreField(row, typename, true);
                     assert(refField, `Type field not found: ${typename} at ${field.refer}`);
                     refField.ignore = true;
                 }
@@ -726,7 +724,7 @@ const resolveChecker = () => {
                                 `Checker parser not found at ${checker.refer}: '${checker.name}'`
                             );
                         }
-                        using __ = doing(`Parsing checker at ${checker.refer}: ${checker.def}`);
+                        using __ = doing(`Parsing checker at ${checker.refer}: ${checker.source}`);
                         assert(!checker.exec, `Checker already parsed: ${checker.refer}`);
                         checker.exec = parser(...checker.args);
                     }
@@ -801,7 +799,7 @@ const invokeChecker = (sheet: Sheet, field: Field, errors: string[]) => {
                     `     path: ${field.path}\n` +
                     `    sheet: ${field.sheet}\n` +
                     `    field: ${field.name}\n` +
-                    `  checker: ${checker.def}\n` +
+                    `  checker: ${checker.source}\n` +
                     `   values:\n` +
                     `      ${errorValues.join("\n      ")}\n`
             );
@@ -915,27 +913,30 @@ export const parse = async (fs: string[], headerOnly: boolean = false) => {
     }
 };
 
+const deepCopy = <T extends TValue>(value: T): T => {
+    if (value && typeof value === "object") {
+        const obj: TObject = (Array.isArray(value) ? [] : {}) as TObject;
+        for (const k in value) {
+            let v = (value as TObject)[k];
+            if (!k.startsWith("!")) {
+                v = deepCopy(v);
+            }
+            obj[k] = v;
+        }
+        return obj as T;
+    } else {
+        return value;
+    }
+};
+
+const copyTag = (src: object & Tag, dest: object & Tag) => {
+    Object.keys(src)
+        .filter((k) => k.startsWith("!"))
+        .forEach((k) => ((dest as TObject)[k] = (src as TObject)[k]));
+};
+
 const copyOf = (workbook: Workbook, writer: string, headerOnly: boolean = false) => {
     const result: Workbook = { ...workbook, writer, sheets: {} };
-
-    const copy = <T extends TValue>(value: T): T => {
-        if (value && typeof value === "object") {
-            if (value["!writer"] && !value["!writer"].includes(writer)) {
-                return null as T;
-            }
-            const obj: TObject = (Array.isArray(value) ? [] : {}) as TObject;
-            for (const k in value) {
-                let v = (value as TObject)[k];
-                if (!k.startsWith("!")) {
-                    v = copy(v);
-                }
-                obj[k] = v;
-            }
-            return obj as T;
-        } else {
-            return value;
-        }
-    };
 
     for (const sheetName in workbook.sheets) {
         const sheet = workbook.sheets[sheetName];
@@ -948,17 +949,16 @@ const copyOf = (workbook: Workbook, writer: string, headerOnly: boolean = false)
                 fields: structuredClone(sheet.fields).filter((f) => f.writers.includes(writer)),
                 data: {},
             };
+            copyTag(sheet.data, resultSheet.data);
             result.sheets[sheetName] = resultSheet;
             if (!headerOnly) {
-                resultSheet.data = copy(sheet.data);
-                if (sheet.data["!type"] === Type.Sheet) {
-                    for (const key of keys(sheet.data)) {
-                        const row = checkType<TRow>(sheet.data[key], Type.Row);
-                        for (const k in row) {
-                            if (!k.startsWith("!") && typeof row[k] === "object") {
-                                row[k]["!row"] = row;
-                            }
-                        }
+                for (const key of keys(sheet.data)) {
+                    const row = sheet.data[key] as TRow;
+                    const copiedRow: TRow = {};
+                    copyTag(row, copiedRow);
+                    resultSheet.data[key] = copiedRow;
+                    for (const field of resultSheet.fields) {
+                        copiedRow[field.name] = deepCopy(row[field.name]);
                     }
                 }
             }

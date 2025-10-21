@@ -24,7 +24,7 @@ export const genTsTypedef = (path: string, writer: string, resolver: TypeResolve
         typeBuffer.writeLine(`export interface ${className} {`);
         typeBuffer.indent();
         for (const field of sheet.fields.filter((f) => !f.ignore)) {
-            const checker = field.checker.map((v) => v.def).join(";");
+            const checker = field.checker.map((v) => v.source).join(";");
             const comment = field.comment.replaceAll(/[\r\n]+/g, " ");
             typeBuffer.writeLine(`/**`);
             typeBuffer.writeLine(
@@ -152,7 +152,7 @@ export const genWorkbookTypedef = (resolver: TypeResolver) => {
                 if (field.name.startsWith("--")) {
                     continue;
                 }
-                const checker = field.checker.map((v) => v.def).join(";");
+                const checker = field.checker.map((v) => v.source).join(";");
                 const optional = field.typename.endsWith("?") ? "?" : "";
                 const comment = field.comment.replaceAll(/[\r\n]+/g, " ");
                 const array = field.typename.match(/[[\]]+/)?.[0] ?? "";
