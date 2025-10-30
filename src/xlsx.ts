@@ -210,7 +210,7 @@ export class Context {
 
 export type Convertor = (str: string) => TValue;
 export type Checker = (cell: TCell, row: TObject, field: Field, errors: string[]) => boolean;
-export type CheckerParser = (workbook: Workbook, ...args: string[]) => Checker;
+export type CheckerParser = (ctx: Context, ...args: string[]) => Checker;
 type CheckerType = {
     name: string;
     force: boolean;
@@ -872,7 +872,7 @@ const resolveChecker = () => {
                         }
                         using __ = doing(`Parsing checker at ${checker.refer}: ${checker.source}`);
                         assert(!checker.exec, `Checker already parsed: ${checker.refer}`);
-                        checker.exec = parser(workbook, ...checker.args);
+                        checker.exec = parser(ctx, ...checker.args);
                     }
                 }
             }

@@ -184,7 +184,7 @@ const parseIndexerAst = (ctx: Context, rowExpr: IndexerFilterExpr, colExpr: Inde
 };
 
 export const IndexCheckerParser: CheckerParser = (
-    workbook,
+    ctx,
     rowFile,
     rowSheet,
     rowKey,
@@ -195,7 +195,7 @@ export const IndexCheckerParser: CheckerParser = (
     colFilter
 ) => {
     const ast = parseIndexerAst(
-        workbook.context,
+        ctx,
         {
             file: rowFile,
             sheet: rowSheet,
@@ -209,7 +209,7 @@ export const IndexCheckerParser: CheckerParser = (
             filter: colFilter,
         }
     );
-    const indexer = new ColumnIndexer(workbook.context, colFile, colSheet, ast.target.key);
+    const indexer = new ColumnIndexer(ctx, colFile, colSheet, ast.target.key);
 
     return (cell, row, field, errors) => {
         if (cell.v === null || cell.v === undefined) {
@@ -242,7 +242,7 @@ export const IndexCheckerParser: CheckerParser = (
 };
 
 export const SheetCheckerParser: CheckerParser = (
-    workbook,
+    ctx,
     rowFile,
     rowSheet,
     rowKey,
@@ -250,12 +250,12 @@ export const SheetCheckerParser: CheckerParser = (
     file
 ) => {
     const ast = parseIndexerAst(
-        workbook.context,
+        ctx,
         { file: rowFile, sheet: rowSheet, key: rowKey, filter: rowFilter },
         { file: file, sheet: "", key: "", filter: "" }
     );
     const path = file.replace(/\.xlsx$/, "") + ".xlsx";
-    const target = workbook.context.get(path);
+    const target = ctx.get(path);
     return (cell, row, field, errors) => {
         return ast.value.resolve(cell.v, errors, (value) => {
             const sheet = target.get(value as string);

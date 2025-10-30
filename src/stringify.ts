@@ -385,6 +385,9 @@ export const stringifyTs = (data: TValue, option?: TsStringifyOption) => {
             const v = checkType<TCell>((value as TObject)[k], Type.Cell);
             const valueComment = v["!comment"];
             writeTsComment(valueComment, enumBuffer);
+            if (!k.match(/^[a-zA-Z_$][a-zA-Z0-9_$]*$/)) {
+                throw new Error(`Invalid enum key: ${k}`);
+            }
             if (typeof v.v === "number") {
                 enumBuffer.writeLine(`${k} = ${v.v},`);
             } else {
