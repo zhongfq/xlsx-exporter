@@ -22,6 +22,14 @@ export interface GeneratedItemFollowRow {
      *  (location: C1) (checker: @follow(name))
      */
     readonly value?: string;
+    /**
+     *  (location: D1) (checker: x)
+     */
+    readonly arr1?: number[];
+    /**
+     *  (location: E1) (checker: $.length == arr1.length)
+     */
+    readonly arr2?: number[];
 }
 
 export interface GeneratedItemItemRow {

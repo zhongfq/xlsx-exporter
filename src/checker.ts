@@ -15,10 +15,19 @@ export const SizeCheckerParser: CheckerParser = (ctx, arg) => {
     };
 };
 
-export const ExprCheckerParser: CheckerParser = (ctx, arg) => {
-    const expr = new Function("$", "return " + arg);
+export const ExprCheckerParser: CheckerParser = (ctx, expr) => {
+    expr = Array.from(expr.matchAll(/\$?[\w.]+|\d+|[^\w]+/g))
+        .map(([v]) => {
+            if (/^[a-zA-Z_]/.test(v)) {
+                return v.replace(/^(\w+)/, "this.$1.v");
+            } else {
+                return v;
+            }
+        })
+        .join("");
+    const check = new Function("$", "return " + expr);
     return (cell, row, field, errors) => {
-        return expr(cell.v);
+        return check.call(row, cell.v);
     };
 };
 

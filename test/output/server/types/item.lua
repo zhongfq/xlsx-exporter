@@ -5,6 +5,8 @@
 ---@field id integer ###
 ---@field name? string 物品类型
 ---@field value? string 
+---@field arr1? integer[] 
+---@field arr2? integer[] 
 
 ---file: test/res/item.xlsx
 ---@class xlsx.server.ItemItem

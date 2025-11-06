@@ -3,6 +3,14 @@
   },
   "follow": {
     "1": {
+      "arr1": [
+        1,
+        2
+      ],
+      "arr2": [
+        1,
+        2
+      ],
       "id": 1,
       "name": "CHEST",
       "value": "VALUE"

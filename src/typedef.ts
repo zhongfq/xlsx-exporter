@@ -172,7 +172,8 @@ export const genWorkbookTypedef = (ctx: Context, resolver: TypeResolver) => {
                 }
                 typeBuffer.writeLine(`/**`);
                 typeBuffer.writeLine(
-                    ` * ${comment} (location: ${field.refer}) (checker: ${checker || "x"}) ` +
+                    ` * ${comment} (location: ${field.refer}) (type: ${field.typename}) ` +
+                        `(checker: ${checker.replaceAll("@", "\\@") || "x"}) ` +
                         `(writer: ${field.writers.join("|")})`
                 );
                 typeBuffer.writeLine(` */`);
