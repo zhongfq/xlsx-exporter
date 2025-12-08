@@ -27,7 +27,12 @@ export const ExprCheckerParser: CheckerParser = (ctx, expr) => {
         .join("");
     const check = new Function("$", "return " + expr);
     return (cell, row, field, errors) => {
-        return check.call(row, cell.v);
+        try {
+            return check.call(row, cell.v);
+        } catch (e) {
+            errors.push(`Expression error: ${expr}`);
+            return false;
+        }
     };
 };
 

@@ -78,7 +78,11 @@ registerProcessor("typedef", TypedefProcessor, {
     priority: 999,
     required: true,
 });
-registerProcessor("auto-register", AutoRegisterProcessor, { required: true, stage: "after-read" });
+registerProcessor("auto-register", AutoRegisterProcessor, {
+    required: true,
+    stage: "after-read",
+    priority: 999,
+});
 
 registerStringify("merge", mergeSheet);
 registerStringify("simple", simpleSheet);

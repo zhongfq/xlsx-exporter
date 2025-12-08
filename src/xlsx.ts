@@ -1024,7 +1024,10 @@ const performProcessor = async (stage: ProcessorOption["stage"], writer?: string
             for (const sheet of workbook.sheets) {
                 for (const { name, args } of sheet.processors) {
                     const processor = processors[name];
-                    if (processor.option.stage !== stage) {
+                    if (
+                        processor.option.stage !== stage ||
+                        options.suppressProcessors.includes(name)
+                    ) {
                         continue;
                     }
                     arr.push({

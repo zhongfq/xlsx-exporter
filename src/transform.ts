@@ -44,6 +44,9 @@ export const defineSheet = (workbook: Workbook, sheet: Sheet) => {
                     t[key] ||= {};
                     t = t[key] as TObject;
                 } else {
+                    if (t[key]) {
+                        throw new Error(`Key '${key}' is already defined`);
+                    }
                     t[key] = value;
                     if (row["value_comment"]?.v) {
                         value["!comment"] = toString(row["value_comment"]);
