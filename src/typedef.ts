@@ -60,8 +60,8 @@ export const genTsTypedef = (workbook: Workbook, resolver: TypeResolver) => {
             typeBuffer.writeLine(` */`);
             let typename = field.realtype ?? field.typename;
             const optional = typename.endsWith("?") ? "?" : "";
-            const array = typename.match(/[[\]]+/)?.[0] ?? "";
-            typename = typename.replaceAll("?", "").replaceAll("[]", "");
+            const array = typename.match(/\[.*\]/)?.[0].replace(/\d+/g, "") ?? "";
+            typename = typename.match(/^[\w@]+/)?.[0] ?? "";
             if (typename === "int" || typename === "float" || typename === "auto") {
                 typeBuffer.writeLine(`readonly ${field.name}${optional}: number${array};`);
             } else if (typename === "string") {
@@ -106,8 +106,8 @@ export const genLuaTypedef = (workbook: Workbook, resolver: TypeResolver) => {
         buffer.writeLine(`---@class ${className}`);
         for (const field of sheet.fields.filter((f) => !f.ignore)) {
             const optional = field.typename.endsWith("?") ? "?" : "";
-            const array = field.typename.match(/[[\]]+/)?.[0] ?? "";
-            let typename = field.typename.replaceAll("?", "").replaceAll("[]", "");
+            const array = field.typename.match(/\[.*\]/g)?.[0].replace(/\d+/g, "") ?? "";
+            let typename = field.typename.match(/^[\w@]+/)?.[0] ?? "";
             typename = typename.startsWith("@") ? "table" : typename;
             const comment = field.comment.replaceAll(/[\r\n]+/g, " ");
             if (typename === "int" || typename === "auto") {
@@ -166,8 +166,8 @@ export const genWorkbookTypedef = (ctx: Context, resolver: TypeResolver) => {
                 const checker = field.checkers.map((v) => v.source).join(";");
                 const optional = field.typename.endsWith("?") ? "?" : "";
                 const comment = field.comment.replaceAll(/[\r\n]+/g, " ");
-                const array = field.typename.match(/[[\]]+/)?.[0] ?? "";
-                let typename = field.typename.replaceAll("?", "").replaceAll("[]", "");
+                const array = field.typename.match(/\[.*\]/g)?.[0].replace(/\d+/g, "") ?? "";
+                let typename = field.typename.match(/^[\w@]+/)?.[0] ?? "";
                 if (typename.startsWith("@")) {
                     typename = "unknown";
                 } else if (!convertors[typename]) {

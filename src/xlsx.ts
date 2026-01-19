@@ -467,15 +467,20 @@ const tokenizeArray = (str: string) => {
 };
 
 const convertArray = (str: string, typename: string) => {
-    typename = typename.replace("[]", "");
+    const len = Number(typename.match(/\[(\d+)\]/)?.[1]);
+    const itemType = typename.replace(/\[\d*\]/, "");
     const tokens = tokenizeArray(str);
-    return tokens.map((s) => convertValue(s, typename));
+    const result = tokens.map((s) => convertValue(s, itemType));
+    if (!isNaN(len) && result.length !== len) {
+        error(`Array length mismatch: required ${len}, but got ${result.length}`);
+    }
+    return result;
 };
 
 export function convertValue(cell: TCell, typename: string): TCell;
 export function convertValue(value: string, typename: string): TValue;
 export function convertValue(cell: TCell | string, typename: string) {
-    const convertor = convertors[typename.replace("?", "").replaceAll("[]", "")];
+    const convertor = convertors[typename.match(/^\w+/)?.[0] ?? ""];
     if (!convertor) {
         error(`Convertor not found: '${typename}'`);
     }
@@ -506,7 +511,7 @@ export function convertValue(cell: TCell | string, typename: string) {
     let result: TValue = null;
 
     try {
-        if (typename.includes("[]")) {
+        if (typename.includes("[")) {
             result = convertArray(v, rawtypename);
         } else {
             result = convertor(v) ?? null;
